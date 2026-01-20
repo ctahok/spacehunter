@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
     SpaceHunter - HTML5 Canvas Asteroid Shooter Game
-    Copyright (c) Ilkin Jamalli - ij@klaud.uk
+    Copyright (c) ij@klaud.uk
 -->
 <html lang="en">
 <head>
@@ -164,34 +164,7 @@
             text-decoration: none;
         }
         
-        .screen-copyright a:hover {
-            text-decoration: underline;
-        }
-        
-        .visitor-counter {
-            margin-top: 15px;
-            font-size: 11px;
-            color: hsl(0, 0%, 40%);
-        }
-        
-        .visitor-counter span {
-            color: hsl(200, 70%, 55%);
-        }
-        
-        #copyright {
-            position: fixed;
-            bottom: 10px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 12px;
-            color: hsl(0, 0%, 50%);
-        }
-        
-        #copyright a {
-            color: hsl(200, 80%, 60%);
-            text-decoration: none;
-        }
+
         
         #copyright a:hover {
             text-decoration: underline;
@@ -221,10 +194,9 @@
                 <span>Space / Click</span> - Shoot
             </div>
             <div class="start-hint">Press SPACE to start</div>
-            <div class="visitor-counter">Visitors: <span id="visitorCount">...</span></div>
+            <div class="screen-copyright">Copyright &copy; ij@klaud.uk</div>
         </div>
     </div>
-    <div id="copyright">Visitors: <span id="visitorCountFixed">...</span></div>
 
     <script>
     // ============================================
@@ -1341,23 +1313,7 @@
 
     // Start the game
     const game = new Game();
-    
-    // Visitor counter using CountAPI
-    (function() {
-        const namespace = 'ctahok-spacehunter';
-        const key = 'visits';
-        fetch(`https://api.countapi.xyz/hit/${namespace}/${key}`)
-            .then(res => res.json())
-            .then(data => {
-                const count = data.value.toLocaleString();
-                document.getElementById('visitorCount').textContent = count;
-                document.getElementById('visitorCountFixed').textContent = count;
-            })
-            .catch(() => {
-                document.getElementById('visitorCount').textContent = '-';
-                document.getElementById('visitorCountFixed').textContent = '-';
-            });
-    })();
+
     </script>
 </body>
 </html>

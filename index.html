@@ -221,11 +221,10 @@
                 <span>Space / Click</span> - Shoot
             </div>
             <div class="start-hint">Press SPACE to start</div>
-            <div class="screen-copyright">Copyright &copy; Ilkin Jamalli - <a href="mailto:ij@klaud.uk">ij@klaud.uk</a></div>
             <div class="visitor-counter">Visitors: <span id="visitorCount">...</span></div>
         </div>
     </div>
-    <div id="copyright">Copyright &copy; Ilkin Jamalli - <a href="mailto:ij@klaud.uk">ij@klaud.uk</a></div>
+    <div id="copyright">Visitors: <span id="visitorCountFixed">...</span></div>
 
     <script>
     // ============================================
@@ -1350,10 +1349,13 @@
         fetch(`https://api.countapi.xyz/hit/${namespace}/${key}`)
             .then(res => res.json())
             .then(data => {
-                document.getElementById('visitorCount').textContent = data.value.toLocaleString();
+                const count = data.value.toLocaleString();
+                document.getElementById('visitorCount').textContent = count;
+                document.getElementById('visitorCountFixed').textContent = count;
             })
             .catch(() => {
                 document.getElementById('visitorCount').textContent = '-';
+                document.getElementById('visitorCountFixed').textContent = '-';
             });
     })();
     </script>

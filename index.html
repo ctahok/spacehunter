@@ -168,6 +168,16 @@
             text-decoration: underline;
         }
         
+        .visitor-counter {
+            margin-top: 15px;
+            font-size: 11px;
+            color: hsl(0, 0%, 40%);
+        }
+        
+        .visitor-counter span {
+            color: hsl(200, 70%, 55%);
+        }
+        
         #copyright {
             position: fixed;
             bottom: 10px;
@@ -212,6 +222,7 @@
             </div>
             <div class="start-hint">Press SPACE to start</div>
             <div class="screen-copyright">Copyright &copy; Ilkin Jamalli - <a href="mailto:ij@klaud.uk">ij@klaud.uk</a></div>
+            <div class="visitor-counter">Visitors: <span id="visitorCount">...</span></div>
         </div>
     </div>
     <div id="copyright">Copyright &copy; Ilkin Jamalli - <a href="mailto:ij@klaud.uk">ij@klaud.uk</a></div>
@@ -1331,6 +1342,20 @@
 
     // Start the game
     const game = new Game();
+    
+    // Visitor counter using CountAPI
+    (function() {
+        const namespace = 'ctahok-spacehunter';
+        const key = 'visits';
+        fetch(`https://api.countapi.xyz/hit/${namespace}/${key}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('visitorCount').textContent = data.value.toLocaleString();
+            })
+            .catch(() => {
+                document.getElementById('visitorCount').textContent = '-';
+            });
+    })();
     </script>
 </body>
 </html>

@@ -42,32 +42,44 @@
             display: none;
             position: fixed;
             bottom: 20px;
-            left: 20px;
-            right: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
             pointer-events: none;
+            width: auto;
+            max-width: 90vw;
         }
 
         .mobile-controls.active {
-            display: block;
+            display: block !important;
+        }
+
+        /* Force show mobile controls for debugging */
+        .mobile-controls.force-show {
+            display: block !important;
         }
 
         .mobile-controls button {
-            background: hsla(200, 50%, 30%, 0.8);
-            border: 2px solid hsl(200, 100%, 50%);
+            background: hsla(200, 50%, 30%, 0.9);
+            border: 3px solid hsl(200, 100%, 50%);
             color: white;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             padding: 12px 20px;
             border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            margin: 0 10px;
+            width: 65px;
+            height: 65px;
+            margin: 0 8px;
             cursor: pointer;
             pointer-events: auto;
             backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px hsla(200, 100%, 50%, 0.3);
+            box-shadow: 0 4px 20px hsla(200, 100%, 50%, 0.5);
             transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1001;
         }
 
         .mobile-controls button:active {
@@ -87,27 +99,29 @@
         }
 
         .mobile-controls .left-btn {
-            position: absolute;
-            left: 20px;
-            bottom: 20px;
+            position: relative;
+            float: left;
         }
 
         .mobile-controls .right-btn {
-            position: absolute;
-            left: 100px;
-            bottom: 20px;
+            position: relative;
+            float: left;
         }
 
         .mobile-controls .thrust-btn {
-            position: absolute;
-            right: 100px;
-            bottom: 20px;
+            position: relative;
+            float: right;
         }
 
         .mobile-controls .shoot-btn {
-            position: absolute;
-            right: 20px;
-            bottom: 20px;
+            position: relative;
+            float: right;
+        }
+
+        .mobile-controls::after {
+            content: '';
+            display: table;
+            clear: both;
         }
 
         /* Touch feedback for mobile */
@@ -988,6 +1002,10 @@
                 console.log('Desktop mode - mobile controls hidden');
             }
 
+            // Force show mobile controls for debugging (remove this after testing)
+            document.querySelector('.mobile-controls').classList.add('force-show');
+            console.log('Mobile controls force-shown for debugging');
+
             // Keyboard controls
             window.addEventListener('keydown', e => {
                 this.keys[e.key.toLowerCase()] = true;
@@ -1040,13 +1058,33 @@
         }
 
         detectMobile() {
-            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const isSmallScreen = window.innerWidth < 768;
-            const hasTouch = 'ontouchstart' in window;
-            const isMobile = isMobileUA || isSmallScreen || hasTouch;
+            // Check URL parameter for forcing mobile mode
+            const urlSearch = window.location.search;
+            const forceMobile = urlSearch.indexOf('mobile=true') !== -1;
 
-            console.log('Mobile detection:', { isMobileUA, isSmallScreen, hasTouch, isMobile, width: window.innerWidth });
-            return isMobile;
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isSmallScreen = window.innerWidth < 1024; // More aggressive screen size detection
+            const hasTouch = 'ontouchstart' in window || 'ontouch' in window;
+            const isMobile = isMobileUA || isSmallScreen || hasTouch || forceMobile;
+
+            console.log('Mobile detection:', {
+                userAgent: navigator.userAgent.substring(0, 100) + '...',
+                isMobileUA,
+                isSmallScreen,
+                hasTouch,
+                forceMobile,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                isMobile
+            });
+
+            // Also check for common mobile indicators
+            const isLikelyMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone/i.test(navigator.userAgent) ||
+                                  window.innerWidth < 1024 ||
+                                  'ontouchstart' in window ||
+                                  forceMobile;
+
+            return isMobile || isLikelyMobile;
         }
 
         handleTouch(touch, canvas) {

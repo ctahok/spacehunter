@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!--
+    SpaceHunter - HTML5 Canvas Asteroid Shooter Game
+    Copyright (c) Ilkin Jamalli - ij@klaud.uk
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -148,6 +152,25 @@
             font-size: 24px;
             animation: pulse 1.5s infinite;
         }
+        
+        #copyright {
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: hsl(0, 0%, 50%);
+        }
+        
+        #copyright a {
+            color: hsl(200, 80%, 60%);
+            text-decoration: none;
+        }
+        
+        #copyright a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -175,6 +198,7 @@
             <div class="start-hint">Press SPACE to start</div>
         </div>
     </div>
+    <div id="copyright">Copyright &copy; Ilkin Jamalli - <a href="mailto:ij@klaud.uk">ij@klaud.uk</a></div>
 
     <script>
     // ============================================

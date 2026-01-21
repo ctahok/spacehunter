@@ -403,6 +403,14 @@
 
             #gameCanvas {
                 cursor: crosshair;
+                max-height: 70vh;
+            }
+        }
+
+        /* Mobile Canvas Optimization */
+        @media (max-width: 768px) {
+            #gameCanvas {
+                max-height: 90vh;
             }
         }
 
@@ -1530,11 +1538,15 @@
 
             getInput() {
                 if (this.isMobile) {
-                    // Mobile: Virtual controls + touch aiming
+                    // Mobile: Virtual controls with refined mapping
+                    const deadZone = 8; // Dead zone to prevent jitter
+                    const xOffset = Math.abs(this.joystickKnobOffset.x);
+                    const yOffset = Math.abs(this.joystickKnobOffset.y);
+
                     return {
-                        left: this.joystickKnobOffset.x < -10, // Joystick left
-                        right: this.joystickKnobOffset.x > 10, // Joystick right
-                        thrust: Math.abs(this.joystickKnobOffset.y) > 5 || Math.abs(this.joystickKnobOffset.x) > 5, // Any joystick movement
+                        left: this.joystickKnobOffset.x < -deadZone, // Joystick left (rotation only)
+                        right: this.joystickKnobOffset.x > deadZone, // Joystick right (rotation only)
+                        thrust: this.joystickKnobOffset.y < -deadZone, // Upward movement only triggers thrust
                         shoot: this.fireButtonActive || this.touchActive // Fire button or screen touch
                     };
                 } else {
@@ -1648,7 +1660,18 @@
             }
 
             restartGame() {
+                // Reset game engine state
                 this.gameEngine.reset();
+
+                // Explicitly reset HUD displays to prevent persistence
+                document.getElementById('scoreValue').textContent = '0';
+                document.getElementById('levelValue').textContent = '1';
+                document.getElementById('healthFill').style.width = '100%';
+                document.getElementById('healthFill').style.backgroundColor = '#00ff00';
+
+                // Ensure game over screen is hidden
+                document.getElementById('gameOverScreen').style.display = 'none';
+
                 this.startGame();
             }
 

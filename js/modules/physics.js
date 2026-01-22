@@ -39,10 +39,22 @@ export function updatePlayer(player, input, canvasWidth, canvasHeight) {
     // Screen wrapping
     wrapPosition(player, canvasWidth, canvasHeight);
     
-    // Rotation matches velocity
-    if (Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1) {
-        player.rotation = Math.atan2(player.vy, player.vx) + Math.PI / 2;
+    // Rotation toward cursor (desktop) or joystick (mobile)
+    let targetAngle;
+    
+    if (input.joystickX !== 0 || input.joystickY !== 0) {
+        // Mobile: rotate toward joystick direction
+        targetAngle = Math.atan2(input.joystickY, input.joystickX) + Math.PI / 2;
+    } else if (input.mouseX !== undefined && input.mouseY !== undefined) {
+        // Desktop: rotate toward mouse cursor
+        targetAngle = Math.atan2(input.mouseY - player.y, input.mouseX - player.x) + Math.PI / 2;
+    } else {
+        // Fallback: keep current rotation
+        targetAngle = player.rotation;
     }
+    
+    // Smooth rotation using lerp
+    player.rotation = lerpAngle(player.rotation, targetAngle, 0.15);
     
     // Update invulnerability
     if (player.invulnerable) {
@@ -51,6 +63,14 @@ export function updatePlayer(player, input, canvasWidth, canvasHeight) {
             player.invulnerable = false;
         }
     }
+}
+
+function lerpAngle(current, target, alpha) {
+    let diff = target - current;
+    // Handle angle wrapping (shortest path)
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return current + diff * alpha;
 }
 
 export function updateAsteroids(asteroids, speedMultiplier, canvasWidth, canvasHeight) {

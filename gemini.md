@@ -13,8 +13,8 @@ const GameState = {
     y: Number,                // Position Y (canvas coordinates)
     vx: Number,               // Velocity X (pixels/frame)
     vy: Number,               // Velocity Y (pixels/frame)
-    rotation: Number,         // Angle in radians
-    health: Number,           // HP (0-100)
+    rotation: Number,         // Angle in radians (rotates to face cursor/joystick)
+    health: Number,           // HP (0-50, reduced from 100)
     weapon: String,           // Current weapon type: 'single', 'triple', 'rapid'
     invulnerable: Boolean,    // Invulnerability flag
     invulnerableTimer: Number, // Frames remaining (60 frames = 1 second)
@@ -93,7 +93,17 @@ const GameState = {
   gameState: String,          // 'menu', 'playing', 'paused', 'gameover'
   isMuted: Boolean,           // Audio mute state (persisted in localStorage)
   isMobile: Boolean,          // Platform detection flag
-  speedMultiplier: Number,    // 1 + (level * 0.1)
+  speedMultiplier: Number,    // 0.5 + (level * 0.05)
+  
+  // Level progression (Session 3 additions)
+  isLevelingUp: Boolean,      // Prevents multi-increment bug (fixes level 1 → 182 jump)
+  levelStartTime: Number,     // Timestamp when level started (for 90s minimum check)
+  bonusWavesSpawned: Number,  // Count of bonus waves (max 2 per level)
+  bonusMessage: {             // "BONUS WAVE!" display
+    text: String,
+    opacity: Number,          // 1.0 to 0.0 fade
+    active: Boolean
+  }
   
   // Input state
   input: {
@@ -186,9 +196,16 @@ player.vy *= 0.95;
 player.x += player.vx;
 player.y += player.vy;
 
-// Rotation to match movement
-if (Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1) {
-  player.rotation = Math.atan2(player.vy, player.vx) + Math.PI / 2;
+// Rotation toward cursor (Session 3 update - was velocity-based)
+const targetAngle = Math.atan2(input.mouseY - player.y, input.mouseX - player.x);
+player.rotation = lerpAngle(player.rotation, targetAngle, 0.15);
+
+// Smooth angle interpolation helper
+function lerpAngle(current, target, alpha) {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * alpha;
 }
 ```
 
@@ -314,13 +331,22 @@ speedMultiplier = 0.5 + (level * 0.05);
 
 - **Frame Rate:** 60fps (16.67ms per frame)
 - **Max Particles:** 300 active (object pooling)
-- **Max Asteroids:** 50 simultaneous (level 47 cap)
+- **Max Asteroids:** 12 simultaneous (20% screen coverage cap, Session 3 update)
 - **Input Latency:** < 50ms from event to visual response
 - **Memory:** < 100MB heap size
 
 ---
 
 ## Spawn Rules
+
+### Bullet Spawn from Nose (Session 3 update)
+```javascript
+// Bullets spawn 18px forward from ship center (not center)
+const noseOffsetX = Math.cos(player.rotation - Math.PI / 2) * 18;
+const noseOffsetY = Math.sin(player.rotation - Math.PI / 2) * 18;
+const spawnX = player.x + noseOffsetX;
+const spawnY = player.y + noseOffsetY;
+```
 
 ### Asteroid Safe Spawn
 ```javascript
@@ -338,17 +364,35 @@ function isSafeSpawnPosition(x, y, player) {
 - Despawn: After 10 seconds if not collected
 - Only 1 weapon on screen at a time
 
+### Level Progression (Session 3 additions)
+**90-Second Minimum Level Time:**
+```javascript
+// If level cleared in < 90 seconds, spawn bonus wave (max 2)
+const levelDuration = Date.now() - GameState.levelStartTime;
+if (levelDuration < 90000 && GameState.bonusWavesSpawned < 2) {
+  spawnBonusWave(4); // 4 bonus asteroids
+  GameState.bonusWavesSpawned++;
+  showBonusMessage("BONUS WAVE!");
+} else {
+  advanceLevel(); // Normal progression
+}
+```
+
+**Wave Delay:**
+- Time between levels: 5000ms (5 seconds, increased from 3s)
+- Allows voice lines to complete before next wave
+
 ---
 
 ## Verification Equations
 
 ### Level-to-Asteroid Count
 ```
-asteroidCount = Math.min(3 + level, 15)
-// Caps at 15 asteroids to prevent screen overflow
+asteroidCount = Math.min(3 + level, 12)
+// Caps at 12 asteroids (20% coverage) to prevent screen overflow
 // Level 1: 4 asteroids
-// Level 10: 13 asteroids
-// Level 12+: 15 asteroids (capped)
+// Level 9: 12 asteroids (cap reached)
+// Level 10+: 12 asteroids (capped)
 ```
 
 ### Score Calculation
@@ -357,9 +401,9 @@ basePoints = {large: 20, medium: 50, small: 100}
 finalPoints = basePoints[size] * comboMultiplier
 ```
 
-### Health Bar Width
+### Health Bar Width (Session 3 update - 50 HP max)
 ```
-barWidth = (currentHealth / 100) * 200px
+barWidth = (currentHealth / 50) * 200px
 ```
 
 ### Screen Shake Decay
@@ -373,5 +417,5 @@ amplitude = 5 * (0.9 ^ frameCount)
 ---
 
 **Document Status:** Complete  
-**Last Updated:** 2026-01-21  
-**Version:** 1.0
+**Last Updated:** 2026-01-22 (Session 3: Critical bug fix + major overhaul)  
+**Version:** 1.2

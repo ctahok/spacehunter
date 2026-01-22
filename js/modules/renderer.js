@@ -98,18 +98,69 @@ export function renderPlayer(context, player) {
     context.translate(player.x, player.y);
     context.rotate(player.rotation);
     
+    const color = player.invulnerable ? 'hsl(0, 80%, 50%)' : 'hsl(200, 100%, 50%)';
+    
+    // Draw sleek racer spacecraft
     context.beginPath();
-    context.moveTo(0, -15);
-    context.lineTo(-10, 10);
-    context.lineTo(10, 10);
+    
+    // Nose (top point)
+    context.moveTo(0, -18);
+    
+    // Right wing sweep
+    context.lineTo(8, -10);
+    context.lineTo(12, -2);
+    context.lineTo(6, 0);
+    
+    // Right rear wing
+    context.lineTo(8, 8);
+    context.lineTo(3, 12);
+    
+    // Engine mount (right)
+    context.lineTo(3, 14);
+    
+    // Back to center through left side
+    context.lineTo(0, 13);
+    context.lineTo(-3, 14);
+    
+    // Engine mount (left)
+    context.lineTo(-3, 12);
+    context.lineTo(-8, 8);
+    
+    // Left rear wing
+    context.lineTo(-6, 0);
+    
+    // Left wing sweep
+    context.lineTo(-12, -2);
+    context.lineTo(-8, -10);
+    
     context.closePath();
     
-    const color = player.invulnerable ? 'hsl(0, 80%, 50%)' : 'hsl(200, 100%, 50%)';
-    context.fillStyle = color;
+    // Fill with gradient
+    const gradient = context.createLinearGradient(0, -18, 0, 14);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, 'hsl(200, 100%, 30%)');
+    context.fillStyle = gradient;
     context.fill();
+    
+    // Stroke outline
     context.strokeStyle = color;
     context.lineWidth = 2;
     context.stroke();
+    
+    // Engine glow at rear
+    context.shadowBlur = 15;
+    context.shadowColor = color;
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(0, 13, 3, 0, Math.PI * 2);
+    context.fill();
+    context.shadowBlur = 0;
+    
+    // Cockpit detail (small window)
+    context.fillStyle = 'hsl(200, 50%, 80%)';
+    context.beginPath();
+    context.ellipse(0, -5, 2, 4, 0, 0, Math.PI * 2);
+    context.fill();
     
     context.restore();
 }
@@ -156,7 +207,7 @@ export function updateHUD(gameState) {
     const scoreElement = document.getElementById('score');
     const levelElement = document.getElementById('level');
     
-    const healthPercent = Math.max(0, gameState.player.health) / 100;
+    const healthPercent = Math.max(0, gameState.player.health) / 50;
     healthBar.style.width = (healthPercent * 100) + '%';
     
     scoreElement.textContent = gameState.score;

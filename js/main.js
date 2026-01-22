@@ -41,7 +41,7 @@ const GameState = {
         vx: 0,
         vy: 0,
         rotation: 0,
-        health: 100,
+        health: 50,
         weapon: 'single',
         weaponExpiry: 0,
         invulnerable: false,
@@ -59,6 +59,10 @@ const GameState = {
     speedMultiplier: 0.5,
     lastKillTime: 0,
     comboActive: false,
+    isLevelingUp: false,
+    levelStartTime: Date.now(),
+    bonusWavesSpawned: 0,
+    bonusMessage: { active: false, text: '', alpha: 1.0 },
     screenShake: {
         active: false,
         amplitude: 0,
@@ -95,6 +99,7 @@ function gameLoop(currentTime) {
         checkCollisions();
         checkLevelComplete();
         updateScreenShake();
+        updateBonusMessage();
     }
     
     // Render
@@ -131,6 +136,11 @@ function gameLoop(currentTime) {
     
     updateHUD(GameState);
     
+    // Render bonus message
+    if (GameState.bonusMessage.active) {
+        renderBonusMessage(ctx);
+    }
+    
     // FPS counter (every 60 frames)
     if (frameCount % 60 === 0) {
         const fps = (1000 / deltaTime).toFixed(1);
@@ -141,7 +151,7 @@ function gameLoop(currentTime) {
 }
 
 function spawnWave() {
-    const count = Math.min(3 + GameState.level, 15);
+    const count = Math.min(3 + GameState.level, 12);
     
     for (let i = 0; i < count; i++) {
         let x, y;
@@ -210,14 +220,22 @@ function shootBullet() {
 }
 
 function spawnBullet(targetX, targetY, angleOffset) {
+    // Calculate bullet spawn position at ship's nose (18px forward)
+    const noseOffsetX = Math.cos(GameState.player.rotation - Math.PI / 2) * 18;
+    const noseOffsetY = Math.sin(GameState.player.rotation - Math.PI / 2) * 18;
+    
+    const spawnX = GameState.player.x + noseOffsetX;
+    const spawnY = GameState.player.y + noseOffsetY;
+    
+    // Calculate bullet direction (toward target or forward if mobile)
     const dx = targetX - GameState.player.x;
     const dy = targetY - GameState.player.y;
     const angle = Math.atan2(dy, dx) + angleOffset;
     const speed = 10;
     
     GameState.bullets.push({
-        x: GameState.player.x,
-        y: GameState.player.y,
+        x: spawnX,
+        y: spawnY,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         damage: 1,
@@ -312,16 +330,80 @@ function addScore(points) {
 }
 
 function checkLevelComplete() {
-    if (GameState.asteroids.length === 0) {
-        GameState.level++;
-        GameState.speedMultiplier = 0.5 + (GameState.level * 0.05);
-        playLevelUpSound();
-        speakPhrase('Well done, Cap!');
+    if (GameState.asteroids.length === 0 && !GameState.isLevelingUp) {
+        const levelDuration = Date.now() - GameState.levelStartTime;
+        const MIN_LEVEL_TIME = 90000; // 90 seconds
         
-        setTimeout(() => {
-            spawnWave();
-        }, 3000);
+        if (levelDuration < MIN_LEVEL_TIME && GameState.bonusWavesSpawned < 2) {
+            // Spawn bonus wave
+            GameState.bonusWavesSpawned++;
+            spawnBonusWave(4);
+            showBonusMessage("BONUS WAVE!");
+            playLevelUpSound();
+        } else {
+            // Level complete - advance
+            advanceLevel();
+        }
     }
+}
+
+function advanceLevel() {
+    GameState.isLevelingUp = true;
+    GameState.level++;
+    GameState.speedMultiplier = 0.5 + (GameState.level * 0.05);
+    GameState.levelStartTime = Date.now();
+    GameState.bonusWavesSpawned = 0;
+    
+    playLevelUpSound();
+    speakPhrase('Well done, Cap!');
+    
+    setTimeout(() => {
+        spawnWave();
+        GameState.isLevelingUp = false;
+    }, 5000);
+}
+
+function spawnBonusWave(count) {
+    for (let i = 0; i < count; i++) {
+        let x, y;
+        let attempts = 0;
+        
+        do {
+            const edge = Math.floor(Math.random() * 4);
+            if (edge === 0) { x = Math.random() * canvas.width; y = 0; }
+            else if (edge === 1) { x = canvas.width; y = Math.random() * canvas.height; }
+            else if (edge === 2) { x = Math.random() * canvas.width; y = canvas.height; }
+            else { x = 0; y = Math.random() * canvas.height; }
+            
+            attempts++;
+        } while (!isSafeSpawn(x, y) && attempts < 20);
+        
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.5 + Math.random() * 1;
+        
+        GameState.asteroids.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: 0.01 + Math.random() * 0.02,
+            size: 'large',
+            radius: 50,
+            vertices: generateAsteroidVertices(50),
+            damage: 2
+        });
+    }
+}
+
+function showBonusMessage(text) {
+    GameState.bonusMessage.active = true;
+    GameState.bonusMessage.text = text;
+    GameState.bonusMessage.alpha = 1.0;
+    
+    setTimeout(() => {
+        GameState.bonusMessage.active = false;
+    }, 2000);
 }
 
 function updateWeapons() {
@@ -413,6 +495,28 @@ function showGameOverScreen() {
     highScoresDiv.innerHTML = html;
     
     gameOverScreen.classList.remove('hidden');
+}
+
+function updateBonusMessage() {
+    if (GameState.bonusMessage.active) {
+        GameState.bonusMessage.alpha -= 0.01;
+        if (GameState.bonusMessage.alpha <= 0) {
+            GameState.bonusMessage.active = false;
+        }
+    }
+}
+
+function renderBonusMessage(ctx) {
+    ctx.save();
+    ctx.globalAlpha = GameState.bonusMessage.alpha;
+    ctx.fillStyle = 'hsl(200, 100%, 50%)';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = 'hsl(200, 100%, 50%)';
+    ctx.font = 'bold 48px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(GameState.bonusMessage.text, canvas.width / 2, canvas.height / 2);
+    ctx.restore();
 }
 
 // Restart button

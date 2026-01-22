@@ -56,7 +56,7 @@ const GameState = {
     score: 0,
     level: 1,
     gameState: 'playing',
-    speedMultiplier: 1.0,
+    speedMultiplier: 0.5,
     lastKillTime: 0,
     comboActive: false,
     screenShake: {
@@ -141,7 +141,7 @@ function gameLoop(currentTime) {
 }
 
 function spawnWave() {
-    const count = 3 + GameState.level;
+    const count = Math.min(3 + GameState.level, 15);
     
     for (let i = 0; i < count; i++) {
         let x, y;
@@ -158,7 +158,7 @@ function spawnWave() {
         } while (!isSafeSpawn(x, y) && attempts < 20);
         
         const angle = Math.random() * Math.PI * 2;
-        const speed = 1 + Math.random() * 2;
+        const speed = 0.5 + Math.random() * 1;
         
         GameState.asteroids.push({
             x: x,
@@ -314,13 +314,13 @@ function addScore(points) {
 function checkLevelComplete() {
     if (GameState.asteroids.length === 0) {
         GameState.level++;
-        GameState.speedMultiplier = 1 + (GameState.level * 0.1);
+        GameState.speedMultiplier = 0.5 + (GameState.level * 0.05);
         playLevelUpSound();
         speakPhrase('Well done, Cap!');
         
         setTimeout(() => {
             spawnWave();
-        }, 2000);
+        }, 3000);
     }
 }
 

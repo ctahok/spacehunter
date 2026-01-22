@@ -130,11 +130,13 @@ const GameState = {
 
 ### Asteroid Sizes
 
-| Size   | Radius | Damage | Points | Split Count |
-|--------|--------|--------|--------|-------------|
-| Large  | 50px   | 2 HP   | 20     | 2 Medium    |
-| Medium | 25px   | 1 HP   | 50     | 2 Small     |
-| Small  | 12px   | 0.5 HP | 100    | 0 (destroyed)|
+| Size   | Radius | Damage | Points | Split Count | Base Speed |
+|--------|--------|--------|--------|-------------|------------|
+| Large  | 50px   | 2 HP   | 20     | 2 Medium    | 0.5-1.5 px/f |
+| Medium | 25px   | 1 HP   | 50     | 2 Small     | 0.5-1.5 px/f |
+| Small  | 12px   | 0.5 HP | 100    | 0 (destroyed)| 0.5-1.5 px/f |
+
+**Note:** Base speed is multiplied by `speedMultiplier` for actual velocity.
 
 ### Asteroid Splitting Math
 
@@ -211,10 +213,12 @@ if (entity.y > canvas.height) entity.y = 0;
 
 ### Speed Scaling by Level
 ```javascript
-speedMultiplier = 1 + (level * 0.1);
-// Level 1 = 1.0x
-// Level 5 = 1.5x
-// Level 10 = 2.0x
+speedMultiplier = 0.5 + (level * 0.05);
+// Level 1 = 0.55x (gentle start)
+// Level 5 = 0.75x (learning curve)
+// Level 10 = 1.0x (normal speed)
+// Level 20 = 1.5x (challenging)
+// Level 50 = 3.0x (expert)
 ```
 
 ---
@@ -340,7 +344,11 @@ function isSafeSpawnPosition(x, y, player) {
 
 ### Level-to-Asteroid Count
 ```
-asteroidCount = 3 + level
+asteroidCount = Math.min(3 + level, 15)
+// Caps at 15 asteroids to prevent screen overflow
+// Level 1: 4 asteroids
+// Level 10: 13 asteroids
+// Level 12+: 15 asteroids (capped)
 ```
 
 ### Score Calculation

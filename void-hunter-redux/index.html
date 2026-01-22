@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Void Hunter: Redux</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="hud">
+        <div class="hud-item">
+            <span>HEALTH:</span>
+            <div class="health-bar-container">
+                <div id="healthBar" class="health-bar"></div>
+            </div>
+        </div>
+        <div class="hud-item">SCORE: <span id="score">0</span></div>
+        <div class="hud-item">LEVEL: <span id="level">1</span></div>
+    </div>
+    
+    <button id="muteBtn" class="mute-btn" aria-label="Toggle sound">🔊</button>
+    
+    <div id="mobileControls" class="mobile-controls hidden">
+        <div id="joystick" class="joystick">
+            <div id="joystickKnob" class="joystick-knob"></div>
+        </div>
+        <button id="fireBtn" class="fire-btn">FIRE</button>
+    </div>
+    
+    <div id="gameOverScreen" class="game-over-screen hidden">
+        <div class="game-over-modal">
+            <h1>GAME OVER</h1>
+            <p class="final-score">Score: <span id="finalScore">0</span></p>
+            <div id="highScores" class="high-scores"></div>
+            <button id="restartBtn" class="restart-btn">RESTART</button>
+        </div>
+    </div>
+    
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>

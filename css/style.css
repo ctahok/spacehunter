@@ -527,25 +527,35 @@ body {
 /* Landscape Mode Adjustments */
 @media (orientation: landscape) and (max-height: 500px) {
     #hud {
-        top: 5px;
-        left: 5px;
-        padding: 6px;
-        font-size: 12px;
+        top: 2px;
+        left: 2px;
+        padding: 4px 8px;
+        font-size: 11px;
         border-width: 1px;
     }
     
     .hud-item {
-        margin-bottom: 2px;
+        margin-bottom: 0px;
     }
     
     .health-bar-container {
-        width: 100px;
-        height: 10px;
+        width: 80px;
+        height: 8px;
         border-width: 1px;
-        margin-top: 2px;
+        margin-top: 1px;
     }
     
-    .joystick, .fire-btn {
+    .joystick {
+        left: 10px;
+        bottom: 10px;
+        border-color: hsla(200, 100%, 50%, 0.1); /* Faded border */
+        opacity: 0.4;
+        transition: opacity 0.2s ease;
+    }
+
+    .fire-btn {
+        right: 10px;
+        bottom: 10px;
         opacity: 0.4;
         transition: opacity 0.2s ease;
     }
@@ -565,19 +575,19 @@ body {
 
     /* Compact Menu in Landscape */
     .menu-modal {
-        padding: 20px;
-        min-width: 300px;
-        max-height: 95vh;
+        padding: 15px;
+        min-width: 280px;
+        max-height: 98vh;
         overflow-y: auto;
     }
 
     .menu-modal h1 {
-        font-size: 28px;
-        margin-bottom: 15px;
+        font-size: 24px;
+        margin-bottom: 10px;
     }
 
     .difficulty-container {
-        margin-bottom: 15px;
+        margin-bottom: 10px;
         padding: 10px;
     }
 
@@ -586,7 +596,46 @@ body {
     }
 
     .start-btn {
-        padding: 10px 30px;
+        padding: 8px 25px;
+        font-size: 16px;
+    }
+
+    /* Compact Game Over in Landscape */
+    .game-over-modal {
+        padding: 15px;
+        min-width: 280px;
+        max-height: 98vh;
+        overflow-y: auto;
+    }
+
+    .game-over-modal h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+
+    .final-score {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+
+    .initials-container {
+        padding: 10px;
+        margin: 5px 0;
+    }
+
+    .high-scores {
+        margin: 10px 0;
+        font-size: 16px;
+    }
+
+    .high-scores h2 {
         font-size: 18px;
+        margin-bottom: 5px;
+    }
+
+    .restart-btn {
+        margin-top: 10px;
+        padding: 10px 25px;
+        font-size: 16px;
     }
 }

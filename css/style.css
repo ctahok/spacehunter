@@ -562,4 +562,31 @@ body {
         height: 30px;
         font-size: 18px;
     }
+
+    /* Compact Menu in Landscape */
+    .menu-modal {
+        padding: 20px;
+        min-width: 300px;
+        max-height: 95vh;
+        overflow-y: auto;
+    }
+
+    .menu-modal h1 {
+        font-size: 28px;
+        margin-bottom: 15px;
+    }
+
+    .difficulty-container {
+        margin-bottom: 15px;
+        padding: 10px;
+    }
+
+    .difficulty-desc {
+        display: none; /* Save vertical space */
+    }
+
+    .start-btn {
+        padding: 10px 30px;
+        font-size: 18px;
+    }
 }

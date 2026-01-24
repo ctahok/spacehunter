@@ -137,6 +137,21 @@ function updateDifficultyUI(index) {
     difficultyDesc.textContent = settings.desc;
 }
 
+function requestFullscreen() {
+    try {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+        }
+    } catch (err) {
+        console.warn('Fullscreen request failed:', err);
+    }
+}
+
 const pauseScreen = document.getElementById('pauseScreen');
 const resumeBtn = document.getElementById('resumeBtn');
 const quitBtn = document.getElementById('quitBtn');
@@ -148,19 +163,27 @@ function togglePause() {
     } else if (GameState.gameState === 'paused') {
         GameState.gameState = 'playing';
         pauseScreen.classList.add('hidden');
+        requestFullscreen(); // Ensure we stay in fullscreen
     }
 }
 
-resumeBtn.addEventListener('click', togglePause);
+resumeBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    togglePause();
+});
 
-quitBtn.addEventListener('click', () => {
+quitBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
     pauseScreen.classList.add('hidden');
     menuScreen.classList.remove('hidden');
     GameState.gameState = 'menu';
     stopEngineHum(); // Stop hum on quit
 });
 
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    requestFullscreen();
+    
     const index = difficultySlider.value;
     const settings = DIFFICULTY_SETTINGS[index];
     
@@ -285,78 +308,6 @@ function renderFrame() {
     if (GameState.bonusMessage.active) {
         renderBonusMessage(ctx);
     }
-}
-
-    
-    frameCount++;
-    
-    if (GameState.gameState === 'playing') {
-        // Update
-        updatePlayer(GameState.player, input, canvas.width, canvas.height);
-        spawnThrustParticles(); // Engine thrust effect
-        updateAsteroids(GameState.asteroids, GameState.speedMultiplier, canvas.width, canvas.height);
-        updateBullets(GameState.bullets, canvas.width, canvas.height);
-        updateParticles(GameState.particles);
-        updateStarfield(GameState.stars, GameState.speedMultiplier, canvas.height);
-        updateWeapons();
-        updateShooting(currentTime);
-        checkCollisions();
-        checkLevelComplete();
-        updateScreenShake();
-        updateBonusMessage();
-    }
-    
-    // Render
-    ctx.save();
-    
-    if (GameState.screenShake.active) {
-        ctx.translate(GameState.screenShake.offsetX, GameState.screenShake.offsetY);
-    }
-    
-    clearCanvas(ctx, canvas.width, canvas.height);
-    renderStarfield(ctx, GameState.stars, GameState.speedMultiplier);
-    
-    for (let asteroid of GameState.asteroids) {
-        renderAsteroid(ctx, asteroid);
-    }
-    
-    for (let bullet of GameState.bullets) {
-        renderBullet(ctx, bullet);
-    }
-    
-    for (let weapon of GameState.weapons) {
-        renderWeapon(ctx, weapon);
-    }
-    
-    for (let healthPickup of GameState.healthPickups) {
-        renderHealthPickup(ctx, healthPickup);
-    }
-    
-    renderPlayer(ctx, GameState.player);
-    
-    for (let particle of GameState.particles) {
-        if (particle.active) {
-            renderParticle(ctx, particle);
-        }
-    }
-    
-    ctx.restore();
-    
-    updateHUD(GameState);
-    renderPowerupIcons(ctx, GameState.player);
-    
-    // Render bonus message
-    if (GameState.bonusMessage.active) {
-        renderBonusMessage(ctx);
-    }
-    
-    // FPS counter (every 60 frames)
-    if (frameCount % 60 === 0) {
-        const fps = (1000 / deltaTime).toFixed(1);
-        // console.log(`FPS: ${fps}`);
-    }
-    
-    requestAnimationFrame(gameLoop);
 }
 
 function spawnThrustParticles() {
@@ -904,7 +855,8 @@ function renderHighScores() {
     highScoresDiv.innerHTML = html;
 }
 
-document.getElementById('saveScoreBtn').addEventListener('click', () => {
+document.getElementById('saveScoreBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
     const input = document.getElementById('playerInitials');
     const initials = input.value.toUpperCase() || 'ACE';
     saveHighScore(initials);
@@ -935,7 +887,8 @@ function renderBonusMessage(ctx) {
 }
 
 // Restart button
-document.getElementById('restartBtn').addEventListener('click', () => {
+document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
     document.getElementById('gameOverScreen').classList.add('hidden');
     document.getElementById('menuScreen').classList.remove('hidden');
     GameState.gameState = 'menu';

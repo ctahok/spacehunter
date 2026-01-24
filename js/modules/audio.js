@@ -17,7 +17,10 @@ export function initAudio() {
     
     // Setup mute button
     const muteBtn = document.getElementById('muteBtn');
-    muteBtn.addEventListener('click', toggleMute);
+    muteBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        toggleMute();
+    });
     
     // Initialize AudioContext on first user interaction
     document.addEventListener('click', initAudioContext, { once: true });

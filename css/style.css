@@ -76,11 +76,19 @@ body {
     transition: width 0.3s ease;
 }
 
-/* Mute Button */
-.mute-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
+/* Controls Container */
+    .mute-btn {
+        top: 5px;
+        right: 5px;
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+    }
+
+
+/* Mute & Fullscreen Buttons */
+.mute-btn, .fullscreen-btn {
+    position: relative; /* Remove absolute positioning from individual buttons */
     width: 40px;
     height: 40px;
     border: 2px solid hsl(200, 100%, 50%);
@@ -90,10 +98,12 @@ body {
     cursor: pointer;
     border-radius: 4px;
     transition: all 0.2s ease;
-    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.mute-btn:hover {
+.mute-btn:hover, .fullscreen-btn:hover {
     transform: scale(1.1);
     box-shadow: 0 0 10px hsl(200, 100%, 50%);
 }
@@ -565,12 +575,17 @@ body {
         opacity: 0.9;
     }
 
-    .mute-btn {
+    .top-right-controls {
         top: 5px;
         right: 5px;
+        gap: 5px;
+    }
+
+    .mute-btn, .fullscreen-btn {
         width: 30px;
         height: 30px;
         font-size: 18px;
+        border-width: 1px;
     }
 
     /* Compact Menu in Landscape */

@@ -155,6 +155,38 @@ function requestFullscreen() {
 const pauseScreen = document.getElementById('pauseScreen');
 const resumeBtn = document.getElementById('resumeBtn');
 const quitBtn = document.getElementById('quitBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+        requestFullscreen();
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+}
+
+fullscreenBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    toggleFullscreen();
+});
+
+// Update fullscreen button icon based on state
+document.addEventListener('fullscreenchange', updateFullscreenIcon);
+document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+
+function updateFullscreenIcon() {
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    // ⛶ (Fullscreen) vs ⧉ (Windowed) or similar
+    fullscreenBtn.textContent = isFullscreen ? '🗗' : '⛶';
+}
 
 function togglePause() {
     if (GameState.gameState === 'playing') {

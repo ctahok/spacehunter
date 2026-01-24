@@ -34,6 +34,7 @@ The ultimate mobile shooter experience:
 *   **Instant Response**: Upgraded all buttons to `pointerdown` logic, removing the 300ms mobile touch delay.
 *   **Immersive Mode**: Automatic **Forced Fullscreen** upon mission start for total focus.
 *   **Compact UI**: HUD and menus automatically shrink and shift to the corners in landscape mode.
+*   **Mission Control**: Added a **Full Screen Toggle** next to the Mute button for instant immersion switching.
 
 ### 🏆 LEGACY & LEADERBOARDS
 *   **Initials Input**: Save your Top 5 records with a classic 3-character tag.

@@ -1,4 +1,4 @@
-# Void Hunter: Redux 🚀
+# Space Hunter 🚀
 
 A retro-futuristic, browser-based spacecraft shooter built with vanilla HTML5 Canvas and JavaScript. Navigate through asteroid fields, collect weapons, and survive progressively challenging waves—all with zero dependencies and neon-soaked arcade aesthetics.
 
@@ -175,4 +175,4 @@ MIT License - See LICENSE file for details
 ---
 
 **Built with 💙 using the RSDC v3.1 Pipeline**  
-*"Oh, yes!" - Void Hunter Ship AI*
+*\"Let's go!\" - Space Hunter Ship AI*

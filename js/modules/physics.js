@@ -135,7 +135,14 @@ export function splitAsteroid(asteroid, generateVertices) {
     const children = [];
     const newSize = asteroid.size === 'large' ? 'medium' : 'small';
     const newRadius = asteroid.size === 'large' ? 25 : 12;
-    const newDamage = newSize === 'medium' ? 1 : 0.5;
+    
+    // Base damage for new size (without material multiplier)
+    const baseDamage = newSize === 'medium' ? 1 : 0.5;
+    const baseHP = 1; // All sizes have base 1 HP
+    
+    // Get material multiplier from parent asteroid
+    const materialMult = asteroid.materialTier !== undefined ? 
+        (asteroid.damage / (asteroid.size === 'large' ? 2 : (asteroid.size === 'medium' ? 1 : 0.5))) : 1;
     
     // Create 2 children with divergent velocities
     const angles = [120 * Math.PI / 180, -120 * Math.PI / 180];
@@ -154,7 +161,11 @@ export function splitAsteroid(asteroid, generateVertices) {
             size: newSize,
             radius: newRadius,
             vertices: generateVertices(newRadius),
-            damage: newDamage
+            damage: baseDamage * materialMult, // Preserve material damage multiplier
+            hp: baseHP * (asteroid.hp / (asteroid.maxHp || 1)), // Preserve material HP multiplier
+            maxHp: baseHP * (asteroid.hp / (asteroid.maxHp || 1)),
+            materialTier: asteroid.materialTier || 0, // Preserve material tier
+            color: asteroid.color || 'hsl(30, 50%, 40%)' // Preserve color
         });
     }
     

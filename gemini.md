@@ -1,4 +1,4 @@
-# Void Hunter: Redux - Project Map
+# Space Hunter - Project Map
 
 ## Game State Schema
 
@@ -14,8 +14,11 @@ const GameState = {
     vx: Number,               // Velocity X (pixels/frame)
     vy: Number,               // Velocity Y (pixels/frame)
     rotation: Number,         // Angle in radians (rotates to face cursor/joystick)
-    health: Number,           // HP (0-50, reduced from 100)
-    weapon: String,           // Current weapon type: 'single', 'triple', 'rapid'
+    health: Number,           // HP (0-25, reduced from 50)
+    powerups: {               // Stacking powerup system (Session 5)
+      tripleShot: { active: Boolean, expiryTime: Number },
+      rapidFire: { active: Boolean, expiryTime: Number }
+    },
     invulnerable: Boolean,    // Invulnerability flag
     invulnerableTimer: Number, // Frames remaining (60 frames = 1 second)
     radius: Number            // Collision radius (15px)
@@ -32,7 +35,11 @@ const GameState = {
       size: String,           // 'large', 'medium', 'small'
       radius: Number,         // Collision radius: 50, 25, or 12
       vertices: Array,        // Array of {x, y} for procedural shape
-      damage: Number          // Damage on collision: 2, 1, or 0.5
+      damage: Number,         // Damage on collision: base * materialMult
+      hp: Number,             // Hit points: base * materialMult
+      maxHp: Number,          // For damage visualization
+      materialTier: Number,   // 0-4: Rock, Iron, Steel, Titanium, Tungsten
+      color: String           // HSL color based on material tier
     }
   ],
   
@@ -70,6 +77,16 @@ const GameState = {
       radius: Number          // Collision radius (20px)
     }
   ],
+
+  healthPickups: [            // New in Session 5
+    {
+      x: Number,
+      y: Number,
+      expiryTime: Number,
+      radius: Number,         // 15px
+      pulsePhase: Number      // For animation
+    }
+  ],
   
   stars: [                    // Parallax starfield
     {
@@ -85,8 +102,8 @@ const GameState = {
   level: Number,              // Current level (starts at 1)
   highScores: [               // Loaded from localStorage
     { 
-      initials: String,       // Optional player initials (3 chars)
-      score: Number 
+      score: Number,
+      date: String 
     }
   ],
   
@@ -95,17 +112,18 @@ const GameState = {
   isMobile: Boolean,          // Platform detection flag
   speedMultiplier: Number,    // 0.5 + (level * 0.05)
   
-  // Level progression (Session 3 additions)
-  isLevelingUp: Boolean,      // Prevents multi-increment bug (fixes level 1 → 182 jump)
-  levelStartTime: Number,     // Timestamp when level started (for 90s minimum check)
-  bonusWavesSpawned: Number,  // Count of bonus waves (max 2 per level)
-  bonusMessage: {             // "BONUS WAVE!" display
+  isLevelingUp: Boolean,
+  levelStartTime: Number,
+  bonusWavesSpawned: Number,
+  bonusMessage: {
     text: String,
-    opacity: Number,          // 1.0 to 0.0 fade
+    alpha: Number,
     active: Boolean
-  }
+  },
   
-  // Input state
+  nextWeaponSpawn: Number,
+  nextHealthSpawn: Number,    // New in Session 5
+  
   input: {
     up: Boolean,
     down: Boolean,
@@ -114,23 +132,20 @@ const GameState = {
     shooting: Boolean,
     mouseX: Number,
     mouseY: Number,
-    joystickX: Number,        // -1 to 1 (mobile)
-    joystickY: Number         // -1 to 1 (mobile)
+    joystickX: Number,
+    joystickY: Number
   },
   
-  // Screen shake
   screenShake: {
     active: Boolean,
-    amplitude: Number,        // 5px initial
-    frameCount: Number,       // 0 to 12
+    amplitude: Number,
+    frameCount: Number,
     offsetX: Number,
     offsetY: Number
   },
   
-  // Combo system
-  lastKillTime: Number,       // Timestamp of last asteroid kill
-  comboActive: Boolean,       // True if < 2 seconds since last kill
-  comboMultiplier: Number     // 1.5x when active
+  lastKillTime: Number,
+  comboActive: Boolean
 }
 ```
 
@@ -138,105 +153,36 @@ const GameState = {
 
 ## Entity Definitions
 
+### Material Tiers (Every 5 Levels)
+
+| Tier | Name     | Level Range | HP Mult | Speed Mult | Damage Mult | Sound Freq | Color HSL              |
+|------|----------|-------------|---------|------------|-------------|------------|------------------------|
+| 0    | Rock     | 1-4         | 1x      | 1.0x       | 1.0x        | 800 Hz     | hsl(30, 50%, 40%)      |
+| 1    | Iron     | 5-9         | 3x      | 0.8x       | 1.5x        | 1200 Hz    | hsl(0, 10%, 50%)       |
+| 2    | Steel    | 10-14       | 5x      | 0.6x       | 2.0x        | 1800 Hz    | hsl(200, 20%, 60%)     |
+| 3    | Titanium | 15-19       | 8x      | 0.5x       | 2.5x        | 2400 Hz    | hsl(40, 30%, 70%)      |
+| 4    | Tungsten | 20+         | 12x     | 0.4x       | 3.0x        | 3200 Hz    | hsl(0, 0%, 30%)        |
+
 ### Asteroid Sizes
 
-| Size   | Radius | Damage | Points | Split Count | Base Speed |
-|--------|--------|--------|--------|-------------|------------|
-| Large  | 50px   | 2 HP   | 20     | 2 Medium    | 0.5-1.5 px/f |
-| Medium | 25px   | 1 HP   | 50     | 2 Small     | 0.5-1.5 px/f |
-| Small  | 12px   | 0.5 HP | 100    | 0 (destroyed)| 0.5-1.5 px/f |
-
-**Note:** Base speed is multiplied by `speedMultiplier` for actual velocity.
-
-### Asteroid Splitting Math
-
-**Large Asteroid Destruction:**
-- Input: 1 Large asteroid at position (x, y) with velocity (vx, vy)
-- Output: 2 Medium asteroids
-- Math:
-  - Child 1 velocity: `(vx * 0.5 + cos(120°), vy * 0.5 + sin(120°))`
-  - Child 2 velocity: `(vx * 0.5 + cos(-120°), vy * 0.5 + sin(-120°))`
-  - Rotation speed: `parent.rotationSpeed * 1.5`
-
-**Medium Asteroid Destruction:**
-- Input: 1 Medium asteroid
-- Output: 2 Small asteroids
-- Math: Same divergence formula as Large → Medium
-
-**Small Asteroid Destruction:**
-- Input: 1 Small asteroid
-- Output: 20-30 particles (no child asteroids)
-- Particle velocities: Random angle, magnitude 2-5 pixels/frame
+| Size   | Radius | Base HP | Base Damage | Points | Split Count | Base Speed |
+|--------|--------|---------|-------------|--------|-------------|------------|
+| Large  | 50px   | 1 HP    | 2 HP        | 20     | 2 Medium    | 0.5-1.5 px/f |
+| Medium | 25px   | 1 HP    | 1 HP        | 50     | 2 Small     | 0.5-1.5 px/f |
+| Small  | 12px   | 1 HP    | 0.5 HP      | 100    | 0 (destroyed)| 0.5-1.5 px/f |
 
 ---
 
 ## Physics Formulas
 
 ### Player Movement
-```javascript
-// Acceleration from input
-if (input.up) player.vy -= 0.5;
-if (input.down) player.vy += 0.5;
-if (input.left) player.vx -= 0.5;
-if (input.right) player.vx += 0.5;
-
-// Speed clamping
-const maxSpeed = 5;
-const speed = Math.sqrt(player.vx ** 2 + player.vy ** 2);
-if (speed > maxSpeed) {
-  player.vx = (player.vx / speed) * maxSpeed;
-  player.vy = (player.vy / speed) * maxSpeed;
-}
-
-// Inertia decay
-player.vx *= 0.95;
-player.vy *= 0.95;
-
-// Position update
-player.x += player.vx;
-player.y += player.vy;
-
-// Rotation toward cursor (Session 3 update - was velocity-based)
-const targetAngle = Math.atan2(input.mouseY - player.y, input.mouseX - player.x);
-player.rotation = lerpAngle(player.rotation, targetAngle, 0.15);
-
-// Smooth angle interpolation helper
-function lerpAngle(current, target, alpha) {
-  let diff = target - current;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
-  return current + diff * alpha;
-}
-```
+Acceleration, speed clamping (max 5), inertia decay (0.95), and smooth rotation toward target.
 
 ### Collision Detection
-```javascript
-function checkCollision(entity1, entity2) {
-  const dx = entity1.x - entity2.x;
-  const dy = entity1.y - entity2.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  const minDistance = entity1.radius + entity2.radius;
-  return distance < minDistance;
-}
-```
+Standard distance-based circle collision.
 
-### Screen Wrapping (Toroidal Topology)
-```javascript
-if (entity.x < 0) entity.x = canvas.width;
-if (entity.x > canvas.width) entity.x = 0;
-if (entity.y < 0) entity.y = canvas.height;
-if (entity.y > canvas.height) entity.y = 0;
-```
-
-### Speed Scaling by Level
-```javascript
-speedMultiplier = 0.5 + (level * 0.05);
-// Level 1 = 0.55x (gentle start)
-// Level 5 = 0.75x (learning curve)
-// Level 10 = 1.0x (normal speed)
-// Level 20 = 1.5x (challenging)
-// Level 50 = 3.0x (expert)
-```
+### Screen Wrapping
+Toroidal topology for all entities (except particles which can fade out).
 
 ---
 
@@ -244,178 +190,74 @@ speedMultiplier = 0.5 + (level * 0.05);
 
 ### Game Entities
 - **Player:** `hsl(200, 100%, 50%)` (cyan)
-- **Asteroids (base):** `hsl(30, 50%, 40%)` (brown-orange)
-- **Asteroids (highlight):** `hsl(30, 60%, 55%)` (lighter orange)
+- **Asteroids:** Tier-based colors
 - **Bullets:** `hsl(200, 100%, 70%)` (light cyan)
-- **Explosions (core):** `hsl(40, 100%, 60%)` (orange-yellow)
-- **Explosions (outer):** `hsl(20, 90%, 50%)` (red-orange)
 - **Weapon Pickups:** `hsl(120, 80%, 50%)` (neon green)
-
-### UI Elements
-- **Background:** `hsl(240, 30%, 8%)` (deep space)
-- **Health (high):** `hsl(120, 70%, 50%)` (green)
-- **Health (medium):** `hsl(50, 100%, 50%)` (yellow)
-- **Health (low):** `hsl(0, 80%, 50%)` (red)
-- **HUD Text:** `hsl(0, 0%, 95%)` (off-white)
-- **HUD Border:** `hsl(200, 100%, 50%)` (cyan)
-- **Mute Button (active):** `hsl(200, 100%, 50%)` (cyan)
-- **Mute Button (muted):** `hsl(0, 80%, 50%)` (red)
-
-### Starfield Layers
-- **Layer 1 (far):** `hsl(0, 0%, 40%)` (dim gray)
-- **Layer 2 (mid):** `hsl(0, 0%, 60%)` (mid gray)
-- **Layer 3 (near):** `hsl(0, 0%, 80%)` (bright gray)
+- **Health Pickups:** `hsl(0, 100%, 50%)` (red)
 
 ---
 
-## Weapon Types
+## Powerup System (Session 5 Update)
 
-### Single (Default)
-- Fire rate: 10 bullets/second (100ms interval)
-- Spread: 0 degrees (straight)
-- Damage: 1
+Powerups can now stack. Collecting both results in 6 bullets fired at double rate.
 
-### Triple
-- Fire rate: 10 bullets/second
-- Spread: 3 bullets at -15°, 0°, +15° from aim direction
-- Damage: 1 per bullet
-- Duration: 20 seconds after pickup
+### Triple Shot (X3)
+- Fires 3 bullets in spread pattern (-15°, 0°, +15°)
+- Duration: 20 seconds
 
-### Rapid
+### Rapid Fire (X2)
 - Fire rate: 20 bullets/second (50ms interval)
-- Spread: 0 degrees
-- Damage: 0.5 per bullet
-- Duration: 20 seconds after pickup
+- Duration: 20 seconds
 
 ---
 
-## Audio Specifications
+## Difficulty System (Session 6 Update)
 
-### Sound Effects (Web Audio API)
+The game features a selectable difficulty level that scales player stats and asteroid behavior.
 
-**Shooting:**
-- Oscillator frequency: 200Hz
-- Waveform: sine
-- Duration: 50ms
-- Envelope: Exponential decay (gain 1.0 → 0.0)
+| Level  | HP (Max) | Asteroid Speed | Fire Rate | Description |
+| :---   | :---     | :---           | :---      | :---        |
+| **Easy**   | 40       | 0.4x           | 80ms      | Relaxed exploration, high durability. |
+| **Normal** | 25       | 0.5x           | 100ms     | The intended experience. |
+| **Hard**   | 15       | 0.6x           | 120ms     | Aggressive asteroids, fragile ship. |
+| **Expert** | 10       | 0.7x           | 150ms     | One mistake is usually fatal. |
 
-**Explosion:**
-- Source: White noise (AudioBufferSourceNode)
-- Filter: Low-pass at 800Hz
-- Duration: 300ms
-- Envelope: Exponential decay
-
-**Level-Up:**
-- Notes: C (261.63Hz), E (329.63Hz), G (392.00Hz)
-- Timing: Sequential at 0ms, 100ms, 200ms
-- Duration: 500ms total
-- Waveform: triangle
-
-### Voice Lines (Web Speech Synthesis)
-
-**Phrases:**
-1. "Oh, yes!" - Asteroid destroyed
-2. "Well done, Cap!" - Level completed
-3. "Excellent!" - Weapon collected
-
-**Settings:**
-- Voice: System default
-- Rate: 1.0 (normal speed)
-- Pitch: 1.0 (normal pitch)
-- Volume: 1.0 (max)
-- Check `speechSynthesis.speaking` before queuing
+- **Persistence**: Selected difficulty is saved in `localStorage` under `spaceHunterDifficulty`.
+- **UI**: A slider on the main menu and after game over allows switching levels.
+- **HUD Scaling**: The health bar automatically adjusts its 100% width based on the selected difficulty's max HP.
 
 ---
 
-## Performance Targets
+## Audio Specifications (Session 5 Update)
 
-- **Frame Rate:** 60fps (16.67ms per frame)
-- **Max Particles:** 300 active (object pooling)
-- **Max Asteroids:** 12 simultaneous (20% screen coverage cap, Session 3 update)
-- **Input Latency:** < 50ms from event to visual response
-- **Memory:** < 100MB heap size
+### Synth Voice (playVoice)
+Replaces Web Speech Synthesis with melodic arpeggios.
+- **good:** C5-E5-G5 (Major triad)
+- **excellent:** C5-E5-G5-C6 (Arpeggio)
+- **ohyes:** G4-C5-E5-G5
+- **levelUp:** C4-E4-G4-C5
+- **gameOver:** A4-F4-D4-A3 (Minor falling)
+
+### Material-Based SFX
+Asteroid hits and impacts use frequency scaling based on material tier (800Hz to 3200Hz).
 
 ---
 
 ## Spawn Rules
 
-### Bullet Spawn from Nose (Session 3 update)
-```javascript
-// Bullets spawn 18px forward from ship center (not center)
-const noseOffsetX = Math.cos(player.rotation - Math.PI / 2) * 18;
-const noseOffsetY = Math.sin(player.rotation - Math.PI / 2) * 18;
-const spawnX = player.x + noseOffsetX;
-const spawnY = player.y + noseOffsetY;
-```
-
-### Asteroid Safe Spawn
-```javascript
-function isSafeSpawnPosition(x, y, player) {
-  const dx = x - player.x;
-  const dy = y - player.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  return distance > 200; // Minimum 200px from player
-}
-```
-
-### Weapon Spawn
-- Frequency: Every 15 seconds
-- Position: Random on-screen (not near edges)
-- Despawn: After 10 seconds if not collected
-- Only 1 weapon on screen at a time
-
-### Level Progression (Session 3 additions)
-**90-Second Minimum Level Time:**
-```javascript
-// If level cleared in < 90 seconds, spawn bonus wave (max 2)
-const levelDuration = Date.now() - GameState.levelStartTime;
-if (levelDuration < 90000 && GameState.bonusWavesSpawned < 2) {
-  spawnBonusWave(4); // 4 bonus asteroids
-  GameState.bonusWavesSpawned++;
-  showBonusMessage("BONUS WAVE!");
-} else {
-  advanceLevel(); // Normal progression
-}
-```
-
-**Wave Delay:**
-- Time between levels: 5000ms (5 seconds, increased from 3s)
-- Allows voice lines to complete before next wave
+### Health Pickups
+- Spawn every 30-40 seconds if current health < 25.
+- Despawn after 15 seconds if not collected.
 
 ---
 
 ## Verification Equations
 
-### Level-to-Asteroid Count
-```
-asteroidCount = Math.min(3 + level, 12)
-// Caps at 12 asteroids (20% coverage) to prevent screen overflow
-// Level 1: 4 asteroids
-// Level 9: 12 asteroids (cap reached)
-// Level 10+: 12 asteroids (capped)
-```
-
-### Score Calculation
-```
-basePoints = {large: 20, medium: 50, small: 100}
-finalPoints = basePoints[size] * comboMultiplier
-```
-
-### Health Bar Width (Session 3 update - 50 HP max)
-```
-barWidth = (currentHealth / 50) * 200px
-```
-
-### Screen Shake Decay
-```
-amplitude = 5 * (0.9 ^ frameCount)
-// Frame 0: 5px
-// Frame 6: 2.66px
-// Frame 12: 1.42px → stop
-```
+### Health Bar Width
+`barWidth = (currentHealth / 25) * 200px`
 
 ---
 
 **Document Status:** Complete  
-**Last Updated:** 2026-01-22 (Session 3: Critical bug fix + major overhaul)  
-**Version:** 1.2
+**Last Updated:** 2026-01-24 (Session 5: Powerup stacking, Health system overhaul, Synth voice)  
+**Version:** 2.0

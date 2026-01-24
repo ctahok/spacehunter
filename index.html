@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Void Hunter: Redux</title>
-    <link rel="stylesheet" href="./css/style.css">
+    <title>Space Hunter</title>
+    <link rel="stylesheet" href="./css/style.css?v=8">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
@@ -18,6 +19,18 @@
         </div>
         <div class="hud-item">SCORE: <span id="score">0</span></div>
         <div class="hud-item">LEVEL: <span id="level">1</span></div>
+    </div>
+
+    <div id="menuScreen" class="menu-screen">
+        <div class="menu-modal">
+            <h1>SPACE HUNTER</h1>
+            <div class="difficulty-container">
+                <label for="difficultySlider">DIFFICULTY: <span id="difficultyLabel">NORMAL</span></label>
+                <input type="range" id="difficultySlider" min="0" max="3" value="1" class="slider">
+                <p id="difficultyDesc" class="difficulty-desc">Standard Space Hunter experience.</p>
+            </div>
+            <button id="startBtn" class="start-btn">START MISSION</button>
+        </div>
     </div>
     
     <button id="muteBtn" class="mute-btn" aria-label="Toggle sound">🔊</button>
@@ -38,6 +51,6 @@
         </div>
     </div>
     
-    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./js/main.js?v=8"></script>
 </body>
 </html>

@@ -1,12 +1,12 @@
-// Main Game Loop - Void Hunter: Redux
+// Main Game Loop - Space Hunter
 
 import { initRenderer, clearCanvas, generateStars, renderStarfield, updateStarfield, 
          generateAsteroidVertices, renderAsteroid, renderPlayer, renderBullet, 
-         renderParticle, renderWeapon, updateHUD } from './modules/renderer.js';
+         renderParticle, renderWeapon, renderHealthPickup, updateHUD, renderPowerupIcons } from './modules/renderer.js';
 import { updatePlayer, updateAsteroids, updateBullets, updateParticles, 
          checkCollision, splitAsteroid, createParticles } from './modules/physics.js';
 import { initInput, isMobileDevice, getInput } from './modules/input.js';
-import { initAudio, playShootSound, playExplosionSound, playLevelUpSound, speakPhrase } from './modules/audio.js';
+import { initAudio, playShootSound, playExplosionSound, playAsteroidHit, playSpacecraftImpact, playLevelUpSound, playVoice } from './modules/audio.js';
 
 // Initialize canvas
 const canvas = document.getElementById('gameCanvas');
@@ -33,6 +33,14 @@ const stars = [
     ...generateStars(150, 3)
 ];
 
+// Difficulty Settings
+const DIFFICULTY_SETTINGS = [
+    { label: 'EASY', health: 40, speed: 0.4, interval: 80, color: 'hsl(120, 100%, 50%)', desc: 'Relaxed space exploration with extra durability.' },
+    { label: 'NORMAL', health: 25, speed: 0.5, interval: 100, color: 'hsl(200, 100%, 50%)', desc: 'The intended Space Hunter experience.' },
+    { label: 'HARD', health: 15, speed: 0.6, interval: 120, color: 'hsl(40, 100%, 50%)', desc: 'Aggressive asteroids and fragile systems.' },
+    { label: 'EXPERT', health: 10, speed: 0.7, interval: 150, color: 'hsl(0, 100%, 50%)', desc: 'One mistake is usually your last.' }
+];
+
 // Game State
 const GameState = {
     player: {
@@ -41,9 +49,12 @@ const GameState = {
         vx: 0,
         vy: 0,
         rotation: 0,
-        health: 50,
-        weapon: 'single',
-        weaponExpiry: 0,
+        health: 25,
+        maxHealth: 25, // Added for dynamic scaling
+        powerups: {
+            tripleShot: { active: false, expiryTime: 0 },
+            rapidFire: { active: false, expiryTime: 0 }
+        },
         invulnerable: false,
         invulnerableTimer: 0,
         radius: 15
@@ -55,7 +66,7 @@ const GameState = {
     stars: stars,
     score: 0,
     level: 1,
-    gameState: 'playing',
+    gameState: 'menu', // Start in menu
     speedMultiplier: 0.5,
     lastKillTime: 0,
     comboActive: false,
@@ -72,11 +83,73 @@ const GameState = {
     },
     lastShootTime: 0,
     shootInterval: 100,
-    nextWeaponSpawn: Date.now() + 15000
+    nextWeaponSpawn: 0,
+    healthPickups: [],
+    nextHealthSpawn: 0,
+    // Material definitions (Session 4 - Updated: Harder materials)
+    materials: [
+        { name: 'Rock',     hpMult: 1,  speedMult: 1.0, damageMult: 1.0, soundFreq: 800,  color: 'hsl(30, 50%, 40%)' },
+        { name: 'Iron',     hpMult: 3,  speedMult: 0.8, damageMult: 1.5, soundFreq: 1200, color: 'hsl(0, 10%, 50%)' },
+        { name: 'Steel',    hpMult: 5,  speedMult: 0.6, damageMult: 2.0, soundFreq: 1800, color: 'hsl(200, 20%, 60%)' },
+        { name: 'Titanium', hpMult: 8,  speedMult: 0.5, damageMult: 2.5, soundFreq: 2400, color: 'hsl(40, 30%, 70%)' },
+        { name: 'Tungsten', hpMult: 12, speedMult: 0.4, damageMult: 3.0, soundFreq: 3200, color: 'hsl(0, 0%, 30%)' }
+    ]
 };
 
-// Initialize first wave
-spawnWave();
+// Menu Initialization
+const difficultySlider = document.getElementById('difficultySlider');
+const difficultyLabel = document.getElementById('difficultyLabel');
+const difficultyDesc = document.getElementById('difficultyDesc');
+const menuScreen = document.getElementById('menuScreen');
+const startBtn = document.getElementById('startBtn');
+
+// Load saved difficulty
+const savedDifficulty = localStorage.getItem('spaceHunterDifficulty');
+if (savedDifficulty !== null) {
+    difficultySlider.value = savedDifficulty;
+    updateDifficultyUI(savedDifficulty);
+}
+
+difficultySlider.addEventListener('input', (e) => {
+    updateDifficultyUI(e.target.value);
+    localStorage.setItem('spaceHunterDifficulty', e.target.value);
+});
+
+function updateDifficultyUI(index) {
+    const settings = DIFFICULTY_SETTINGS[index];
+    difficultyLabel.textContent = settings.label;
+    difficultyLabel.style.color = settings.color;
+    difficultyDesc.textContent = settings.desc;
+}
+
+startBtn.addEventListener('click', () => {
+    const index = difficultySlider.value;
+    const settings = DIFFICULTY_SETTINGS[index];
+    
+    // Apply difficulty settings
+    GameState.player.health = settings.health;
+    GameState.player.maxHealth = settings.health;
+    GameState.speedMultiplier = settings.speed;
+    GameState.shootInterval = settings.interval;
+    
+    // Reset game state
+    GameState.score = 0;
+    GameState.level = 1;
+    GameState.asteroids = [];
+    GameState.bullets = [];
+    GameState.weapons = [];
+    GameState.healthPickups = [];
+    GameState.player.x = 400;
+    GameState.player.y = 300;
+    GameState.player.vx = 0;
+    GameState.player.vy = 0;
+    GameState.nextWeaponSpawn = Date.now() + 15000;
+    GameState.nextHealthSpawn = Date.now() + 30000;
+    GameState.gameState = 'playing';
+    
+    menuScreen.classList.add('hidden');
+    spawnWave();
+});
 
 // Game Loop
 let lastTime = 0;
@@ -85,11 +158,21 @@ let frameCount = 0;
 function gameLoop(currentTime) {
     const deltaTime = Math.min(currentTime - lastTime, 33);
     lastTime = currentTime;
+    
+    if (GameState.gameState !== 'playing') {
+        // Just render background in menu/gameover
+        clearCanvas(ctx, canvas.width, canvas.height);
+        renderStarfield(ctx, GameState.stars, GameState.speedMultiplier);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+    
     frameCount++;
     
     if (GameState.gameState === 'playing') {
         // Update
         updatePlayer(GameState.player, input, canvas.width, canvas.height);
+        spawnThrustParticles(); // Engine thrust effect
         updateAsteroids(GameState.asteroids, GameState.speedMultiplier, canvas.width, canvas.height);
         updateBullets(GameState.bullets, canvas.width, canvas.height);
         updateParticles(GameState.particles);
@@ -124,6 +207,10 @@ function gameLoop(currentTime) {
         renderWeapon(ctx, weapon);
     }
     
+    for (let healthPickup of GameState.healthPickups) {
+        renderHealthPickup(ctx, healthPickup);
+    }
+    
     renderPlayer(ctx, GameState.player);
     
     for (let particle of GameState.particles) {
@@ -135,6 +222,7 @@ function gameLoop(currentTime) {
     ctx.restore();
     
     updateHUD(GameState);
+    renderPowerupIcons(ctx, GameState.player);
     
     // Render bonus message
     if (GameState.bonusMessage.active) {
@@ -148,6 +236,59 @@ function gameLoop(currentTime) {
     }
     
     requestAnimationFrame(gameLoop);
+}
+
+function spawnThrustParticles() {
+    // Only spawn thrust when player is actively moving
+    const isThrusting = input.up || input.down || input.left || input.right || 
+                        input.joystickX !== 0 || input.joystickY !== 0;
+    
+    if (!isThrusting) return;
+    
+    const player = GameState.player;
+    
+    // Spawn 2-3 particles per frame from engine exhaust
+    const particleCount = 2 + Math.floor(Math.random() * 2);
+    
+    for (let i = 0; i < particleCount; i++) {
+        // Find inactive particle
+        let particle = null;
+        for (let p of GameState.particles) {
+            if (!p.active) {
+                particle = p;
+                break;
+            }
+        }
+        
+        if (!particle) continue;
+        
+        // Position: Rear of ship (13-14px behind center)
+        const exhaustOffset = 13 + Math.random() * 2;
+        const exhaustX = player.x + Math.cos(player.rotation + Math.PI / 2) * exhaustOffset;
+        const exhaustY = player.y + Math.sin(player.rotation + Math.PI / 2) * exhaustOffset;
+        
+        // Add some spread to exhaust
+        const spread = (Math.random() - 0.5) * 4;
+        
+        // Velocity: Opposite to ship's facing direction + spread
+        const thrustSpeed = 1 + Math.random() * 2;
+        const angle = player.rotation + Math.PI / 2 + spread * 0.1;
+        
+        // Randomly choose flame (orange/yellow) or gas (blue-white) particles
+        const isFlame = Math.random() > 0.3;
+        const colors = isFlame 
+            ? ['hsl(30, 100%, 60%)', 'hsl(50, 100%, 50%)', 'hsl(40, 100%, 55%)']  // Orange/yellow flames
+            : ['hsl(200, 80%, 80%)', 'hsl(180, 60%, 70%)'];  // Blue-white gas
+        
+        particle.x = exhaustX;
+        particle.y = exhaustY;
+        particle.vx = Math.cos(angle) * thrustSpeed;
+        particle.vy = Math.sin(angle) * thrustSpeed;
+        particle.alpha = 0.8;
+        particle.color = colors[Math.floor(Math.random() * colors.length)];
+        particle.lifetime = 10 + Math.floor(Math.random() * 10); // 10-20 frames (0.16-0.33s)
+        particle.active = true;
+    }
 }
 
 function spawnWave() {
@@ -167,8 +308,16 @@ function spawnWave() {
             attempts++;
         } while (!isSafeSpawn(x, y) && attempts < 20);
         
+        // Each asteroid gets random material tier (Session 4: Mixed materials)
+        const materialTier = getRandomMaterialTier(GameState.level);
+        const material = GameState.materials[materialTier];
+        
         const angle = Math.random() * Math.PI * 2;
-        const speed = 0.5 + Math.random() * 1;
+        const baseSpeed = 0.5 + Math.random() * 1;
+        const speed = baseSpeed * material.speedMult; // Apply material speed modifier
+        
+        const baseHP = 1; // Large asteroid base HP
+        const baseDamage = 2; // Large asteroid base damage
         
         GameState.asteroids.push({
             x: x,
@@ -180,7 +329,11 @@ function spawnWave() {
             size: 'large',
             radius: 50,
             vertices: generateAsteroidVertices(50),
-            damage: 2
+            damage: baseDamage * material.damageMult, // Apply material damage modifier
+            hp: baseHP * material.hpMult, // Apply material HP modifier
+            maxHp: baseHP * material.hpMult, // For visual damage indication
+            materialTier: materialTier,
+            color: material.color
         });
     }
 }
@@ -191,10 +344,47 @@ function isSafeSpawn(x, y) {
     return Math.sqrt(dx * dx + dy * dy) > 200;
 }
 
+function getRandomMaterialTier(level) {
+    const maxTier = Math.min(Math.floor(level / 5), 4);
+    
+    if (maxTier === 0) return 0; // Levels 1-4: Only Rock
+    
+    // Build weighted distribution
+    // Newest material: 25% (moderate rarity)
+    // Older materials: Split remaining 75% equally
+    const tiers = [];
+    const weights = [];
+    
+    for (let tier = 0; tier <= maxTier; tier++) {
+        tiers.push(tier);
+        if (tier === maxTier) {
+            weights.push(0.25); // Newest material gets 25%
+        } else {
+            weights.push(0.75 / maxTier); // Older materials split 75%
+        }
+    }
+    
+    // Weighted random selection
+    const random = Math.random();
+    let cumulative = 0;
+    for (let i = 0; i < weights.length; i++) {
+        cumulative += weights[i];
+        if (random < cumulative) {
+            return tiers[i];
+        }
+    }
+    
+    return 0; // Fallback to Rock
+}
+
 function updateShooting(currentTime) {
     if (!input.shooting) return;
     
-    const interval = GameState.player.weapon === 'rapid' ? 50 : 100;
+    const player = GameState.player;
+    const isRapid = player.powerups.rapidFire.active;
+    
+    // Rapid fire doubles fire rate (100ms → 50ms)
+    const interval = isRapid ? 50 : 100;
     
     if (currentTime - GameState.lastShootTime > interval) {
         shootBullet();
@@ -203,10 +393,13 @@ function updateShooting(currentTime) {
 }
 
 function shootBullet() {
-    const targetX = isMobileDevice() ? GameState.player.x + Math.cos(GameState.player.rotation - Math.PI / 2) * 100 : input.mouseX;
-    const targetY = isMobileDevice() ? GameState.player.y + Math.sin(GameState.player.rotation - Math.PI / 2) * 100 : input.mouseY;
+    const player = GameState.player;
+    const isTriple = player.powerups.tripleShot.active;
     
-    if (GameState.player.weapon === 'triple') {
+    const targetX = isMobileDevice() ? player.x + Math.cos(player.rotation - Math.PI / 2) * 100 : input.mouseX;
+    const targetY = isMobileDevice() ? player.y + Math.sin(player.rotation - Math.PI / 2) * 100 : input.mouseY;
+    
+    if (isTriple) {
         // Fire 3 bullets in spread pattern
         const angles = [-15, 0, 15];
         for (let angleOffset of angles) {
@@ -254,7 +447,7 @@ function checkCollisions() {
                 GameState.player.invulnerableTimer = 60;
                 triggerScreenShake();
                 createParticles(asteroid.x, asteroid.y, 10, GameState.particles);
-                playExplosionSound();
+                playSpacecraftImpact(asteroid.materialTier || 0); // Bass-heavy impact sound
                 
                 if (GameState.player.health <= 0) {
                     gameOver();
@@ -274,11 +467,23 @@ function checkCollisions() {
             if (checkCollision(bullet, asteroid)) {
                 hit = true;
                 
-                // Award points
+                // Damage asteroid (Session 4: HP system)
+                asteroid.hp -= bullet.damage || 1;
+                
+                // Play material-specific hit sound
+                playAsteroidHit(asteroid.materialTier || 0);
+                
+                // If asteroid still has HP, just hit effect
+                if (asteroid.hp > 0) {
+                    createParticles(asteroid.x, asteroid.y, 5, GameState.particles);
+                    break; // Bullet consumed, but asteroid survives
+                }
+                
+                // Asteroid destroyed - award points
                 const points = asteroid.size === 'large' ? 20 : (asteroid.size === 'medium' ? 50 : 100);
                 addScore(points);
                 
-                // Create particles
+                // Create explosion particles
                 const particleCount = asteroid.size === 'large' ? 25 : (asteroid.size === 'medium' ? 20 : 15);
                 createParticles(asteroid.x, asteroid.y, particleCount, GameState.particles);
                 
@@ -287,10 +492,8 @@ function checkCollisions() {
                 GameState.asteroids.splice(j, 1);
                 GameState.asteroids.push(...children);
                 
-                playExplosionSound();
-                
                 if (children.length === 0) {
-                    speakPhrase('Oh, yes!');
+                    playVoice('ohyes');
                 }
                 
                 break;
@@ -307,10 +510,43 @@ function checkCollisions() {
         const weapon = GameState.weapons[i];
         
         if (checkCollision(GameState.player, weapon)) {
-            GameState.player.weapon = weapon.type;
-            GameState.player.weaponExpiry = Date.now() + 20000;
+            // Activate the appropriate powerup
+            const powerupName = weapon.type === 'triple' ? 'tripleShot' : 'rapidFire';
+            GameState.player.powerups[powerupName].active = true;
+            GameState.player.powerups[powerupName].expiryTime = Date.now() + 20000;
+            
             GameState.weapons.splice(i, 1);
-            speakPhrase('Excellent!');
+            playVoice('excellent');
+        }
+    }
+    
+    // Player vs Health Pickups
+    for (let i = GameState.healthPickups.length - 1; i >= 0; i--) {
+        const healthPickup = GameState.healthPickups[i];
+        
+        if (checkCollision(GameState.player, healthPickup)) {
+            const MAX_HEALTH = 25;
+            
+            // Interpretation A: Heal 60% of missing health
+            const missingHealth = MAX_HEALTH - GameState.player.health;
+            
+            if (missingHealth > 0.5) { // Only heal if significantly missing health
+                const healAmount = Math.max(1, Math.round(missingHealth * 0.6));
+                GameState.player.health += healAmount;
+                
+                // Ensure we never quite hit 100% if we were significantly damaged
+                // but if we are at 24.x, rounding might bring us to 25.
+                // The prompt says "don't fill health completely", so I'll cap at 24 if missing was > 1
+                if (missingHealth > 1 && GameState.player.health >= MAX_HEALTH) {
+                    GameState.player.health = MAX_HEALTH - 1;
+                }
+                
+                GameState.healthPickups.splice(i, 1);
+                playVoice('good');
+                
+                // Show healing message
+                showBonusMessage(`+${healAmount} HP`);
+            }
         }
     }
 }
@@ -355,7 +591,7 @@ function advanceLevel() {
     GameState.bonusWavesSpawned = 0;
     
     playLevelUpSound();
-    speakPhrase('Well done, Cap!');
+    playVoice('levelUp');
     
     setTimeout(() => {
         spawnWave();
@@ -407,10 +643,15 @@ function showBonusMessage(text) {
 }
 
 function updateWeapons() {
-    // Check weapon expiry
-    if (GameState.player.weaponExpiry > 0 && Date.now() > GameState.player.weaponExpiry) {
-        GameState.player.weapon = 'single';
-        GameState.player.weaponExpiry = 0;
+    // Check powerup expiry
+    const now = Date.now();
+    const powerups = GameState.player.powerups;
+    
+    if (powerups.tripleShot.active && now > powerups.tripleShot.expiryTime) {
+        powerups.tripleShot.active = false;
+    }
+    if (powerups.rapidFire.active && now > powerups.rapidFire.expiryTime) {
+        powerups.rapidFire.active = false;
     }
     
     // Remove expired weapon pickups
@@ -424,6 +665,18 @@ function updateWeapons() {
     if (GameState.weapons.length === 0 && Date.now() > GameState.nextWeaponSpawn) {
         spawnWeapon();
         GameState.nextWeaponSpawn = Date.now() + 15000;
+    }
+    
+    // Remove expired health pickups
+    for (let i = GameState.healthPickups.length - 1; i >= 0; i--) {
+        if (Date.now() > GameState.healthPickups[i].expiryTime) {
+            GameState.healthPickups.splice(i, 1);
+        }
+    }
+    
+    // Spawn new health pickup
+    if (Date.now() > GameState.nextHealthSpawn) {
+        spawnHealthPickup();
     }
 }
 
@@ -441,6 +694,23 @@ function spawnWeapon() {
         expiryTime: Date.now() + 10000,
         radius: 20
     });
+}
+
+function spawnHealthPickup() {
+    const margin = 100;
+    const x = margin + Math.random() * (canvas.width - margin * 2);
+    const y = margin + Math.random() * (canvas.height - margin * 2);
+    
+    GameState.healthPickups.push({
+        x: x,
+        y: y,
+        expiryTime: Date.now() + 15000, // Despawn after 15 seconds
+        radius: 15,
+        pulsePhase: Math.random() * Math.PI * 2 // Random start phase for pulse animation
+    });
+    
+    // Schedule next health pickup spawn (30-40 seconds)
+    GameState.nextHealthSpawn = Date.now() + 30000 + Math.random() * 10000;
 }
 
 function triggerScreenShake() {
@@ -467,16 +737,17 @@ function updateScreenShake() {
 
 function gameOver() {
     GameState.gameState = 'gameover';
+    playVoice('gameOver');
     saveHighScore();
     showGameOverScreen();
 }
 
 function saveHighScore() {
-    let highScores = JSON.parse(localStorage.getItem('voidHunterHighScores') || '[]');
+    let highScores = JSON.parse(localStorage.getItem('spaceHunterHighScores') || '[]');
     highScores.push({ score: GameState.score, date: new Date().toLocaleDateString() });
     highScores.sort((a, b) => b.score - a.score);
     highScores = highScores.slice(0, 5);
-    localStorage.setItem('voidHunterHighScores', JSON.stringify(highScores));
+    localStorage.setItem('spaceHunterHighScores', JSON.stringify(highScores));
 }
 
 function showGameOverScreen() {
@@ -486,7 +757,7 @@ function showGameOverScreen() {
     
     finalScore.textContent = GameState.score;
     
-    const highScores = JSON.parse(localStorage.getItem('voidHunterHighScores') || '[]');
+    const highScores = JSON.parse(localStorage.getItem('spaceHunterHighScores') || '[]');
     let html = '<h2>High Scores</h2><ol>';
     for (let entry of highScores) {
         html += `<li>${entry.score} - ${entry.date}</li>`;
@@ -521,11 +792,13 @@ function renderBonusMessage(ctx) {
 
 // Restart button
 document.getElementById('restartBtn').addEventListener('click', () => {
-    location.reload();
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('menuScreen').classList.remove('hidden');
+    GameState.gameState = 'menu';
 });
 
 // Start game loop
 requestAnimationFrame(gameLoop);
 
-console.log('Void Hunter: Redux - Game Started');
+console.log('Space Hunter - Game Started');
 console.log('Platform:', isMobileDevice() ? 'Mobile' : 'Desktop');

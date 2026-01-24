@@ -164,6 +164,120 @@ body {
     background: hsl(0, 80%, 50%);
 }
 
+/* Menu Screen */
+.menu-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: hsla(0, 0%, 0%, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+}
+
+.menu-screen.hidden {
+    display: none;
+}
+
+.menu-modal {
+    background: hsl(240, 30%, 8%);
+    border: 3px solid hsl(200, 100%, 50%);
+    box-shadow: 0 0 30px hsla(200, 100%, 50%, 0.5);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    min-width: 350px;
+    max-width: 90%;
+}
+
+.menu-modal h1 {
+    font-size: 42px;
+    margin-bottom: 30px;
+    letter-spacing: 0.2em;
+    text-shadow: 0 0 20px hsl(200, 100%, 50%);
+}
+
+.difficulty-container {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: hsla(240, 30%, 15%, 0.5);
+    border-radius: 4px;
+}
+
+.difficulty-container label {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    letter-spacing: 0.1em;
+}
+
+#difficultyLabel {
+    color: hsl(200, 100%, 50%);
+    text-shadow: 0 0 10px hsla(200, 100%, 50%, 0.5);
+}
+
+.difficulty-desc {
+    font-size: 14px;
+    color: hsl(0, 0%, 70%);
+    margin-top: 15px;
+    height: 1em;
+}
+
+.start-btn {
+    padding: 15px 40px;
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    background: hsl(200, 100%, 50%);
+    color: hsl(240, 30%, 8%);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.start-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px hsl(200, 100%, 50%);
+}
+
+/* Slider Styling */
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: hsla(200, 100%, 50%, 0.2);
+    outline: none;
+    border: 1px solid hsla(200, 100%, 50%, 0.5);
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: hsl(200, 100%, 50%);
+    cursor: pointer;
+    box-shadow: 0 0 10px hsl(200, 100%, 50%);
+}
+
+.slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: hsl(200, 100%, 50%);
+    cursor: pointer;
+    box-shadow: 0 0 10px hsl(200, 100%, 50%);
+    border: none;
+}
+
 /* Game Over Screen */
 .game-over-screen {
     position: fixed;

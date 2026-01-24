@@ -76,13 +76,30 @@ export function renderAsteroid(context, asteroid) {
     }
     context.closePath();
     
-    const gradient = context.createRadialGradient(0, 0, 0, 0, 0, asteroid.radius);
-    gradient.addColorStop(0, 'hsl(30, 60%, 55%)');
-    gradient.addColorStop(1, 'hsl(30, 50%, 40%)');
-    context.fillStyle = gradient;
+    // Use material-based color (Session 4)
+    const baseColor = asteroid.color || 'hsl(30, 50%, 40%)'; // Default to rock
+    
+    // Extract HSL values for gradient
+    const hslMatch = baseColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (hslMatch) {
+        const [, h, s, l] = hslMatch.map(Number);
+        const gradient = context.createRadialGradient(0, 0, 0, 0, 0, asteroid.radius);
+        gradient.addColorStop(0, `hsl(${h}, ${Math.min(s + 10, 100)}%, ${Math.min(l + 15, 100)}%)`);
+        gradient.addColorStop(1, baseColor);
+        context.fillStyle = gradient;
+    } else {
+        context.fillStyle = baseColor;
+    }
+    
     context.fill();
     
-    context.strokeStyle = 'hsl(30, 50%, 30%)';
+    // Darker stroke based on material color
+    if (hslMatch) {
+        const [, h, s, l] = hslMatch.map(Number);
+        context.strokeStyle = `hsl(${h}, ${s}%, ${Math.max(l - 10, 0)}%)`;
+    } else {
+        context.strokeStyle = 'hsl(30, 50%, 30%)';
+    }
     context.lineWidth = 2;
     context.stroke();
     
@@ -196,10 +213,57 @@ export function renderWeapon(context, weapon) {
     context.shadowBlur = 0;
     
     context.fillStyle = 'hsl(0, 0%, 95%)';
-    context.font = '12px Courier New';
+    context.font = 'bold 14px Courier New';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText(weapon.type.toUpperCase(), weapon.x, weapon.y);
+    const label = weapon.type === 'triple' ? 'X3' : 'X2';
+    context.fillText(label, weapon.x, weapon.y);
+}
+
+export function renderHealthPickup(context, healthPickup) {
+    const now = Date.now();
+    
+    // Pulsing animation
+    const pulseValue = Math.sin(now / 200 + healthPickup.pulsePhase) * 0.5 + 0.5;
+    const glowIntensity = 10 + pulseValue * 10;
+    const radius = healthPickup.radius + pulseValue * 3;
+    
+    // Outer glow
+    context.shadowBlur = glowIntensity;
+    context.shadowColor = 'hsl(0, 100%, 50%)';
+    context.fillStyle = 'rgba(255, 0, 0, 0.3)';
+    context.beginPath();
+    context.arc(healthPickup.x, healthPickup.y, radius, 0, Math.PI * 2);
+    context.fill();
+    context.shadowBlur = 0;
+    
+    // Red circle background
+    context.fillStyle = 'hsl(0, 100%, 50%)';
+    context.beginPath();
+    context.arc(healthPickup.x, healthPickup.y, healthPickup.radius, 0, Math.PI * 2);
+    context.fill();
+    
+    // White cross symbol
+    const crossSize = healthPickup.radius * 0.6;
+    const crossThickness = crossSize * 0.3;
+    
+    context.fillStyle = 'rgb(255, 255, 255)';
+    
+    // Horizontal bar
+    context.fillRect(
+        healthPickup.x - crossSize / 2,
+        healthPickup.y - crossThickness / 2,
+        crossSize,
+        crossThickness
+    );
+    
+    // Vertical bar
+    context.fillRect(
+        healthPickup.x - crossThickness / 2,
+        healthPickup.y - crossSize / 2,
+        crossThickness,
+        crossSize
+    );
 }
 
 export function updateHUD(gameState) {
@@ -207,9 +271,100 @@ export function updateHUD(gameState) {
     const scoreElement = document.getElementById('score');
     const levelElement = document.getElementById('level');
     
-    const healthPercent = Math.max(0, gameState.player.health) / 50;
+    const maxHealth = gameState.player.maxHealth || 25;
+    const healthPercent = Math.max(0, gameState.player.health) / maxHealth;
     healthBar.style.width = (healthPercent * 100) + '%';
     
     scoreElement.textContent = gameState.score;
     levelElement.textContent = gameState.level;
+}
+
+export function renderPowerupIcons(context, player) {
+    const now = Date.now();
+    const powerups = player.powerups;
+    let iconX = 10; // Start position from left
+    const iconY = 60; // Below the HUD
+    const iconSize = 40;
+    const spacing = 50;
+    
+    // Triple Shot Icon
+    if (powerups.tripleShot.active) {
+        const timeLeft = Math.max(0, (powerups.tripleShot.expiryTime - now) / 1000);
+        const alpha = timeLeft < 5 ? 0.3 + 0.7 * (Math.sin(now / 100) * 0.5 + 0.5) : 1.0; // Pulse when expiring
+        
+        context.save();
+        context.globalAlpha = alpha;
+        
+        // Background circle
+        context.fillStyle = 'rgba(0, 255, 100, 0.2)';
+        context.beginPath();
+        context.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
+        context.fill();
+        
+        // Border
+        context.strokeStyle = 'rgba(0, 255, 100, 0.8)';
+        context.lineWidth = 2;
+        context.stroke();
+        
+        // "X3" text
+        context.fillStyle = 'rgb(0, 255, 100)';
+        context.font = 'bold 18px Courier New';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('X3', iconX + iconSize/2, iconY + iconSize/2 - 2);
+        
+        // Timer text
+        context.font = '10px Courier New';
+        context.fillText(timeLeft.toFixed(1) + 's', iconX + iconSize/2, iconY + iconSize/2 + 10);
+        
+        context.restore();
+        
+        iconX += spacing;
+    }
+    
+    // Rapid Fire Icon
+    if (powerups.rapidFire.active) {
+        const timeLeft = Math.max(0, (powerups.rapidFire.expiryTime - now) / 1000);
+        const alpha = timeLeft < 5 ? 0.3 + 0.7 * (Math.sin(now / 100) * 0.5 + 0.5) : 1.0; // Pulse when expiring
+        
+        context.save();
+        context.globalAlpha = alpha;
+        
+        // Background circle
+        context.fillStyle = 'rgba(255, 150, 0, 0.2)';
+        context.beginPath();
+        context.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
+        context.fill();
+        
+        // Border
+        context.strokeStyle = 'rgba(255, 150, 0, 0.8)';
+        context.lineWidth = 2;
+        context.stroke();
+        
+        // "X2" text
+        context.fillStyle = 'rgb(255, 150, 0)';
+        context.font = 'bold 18px Courier New';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('X2', iconX + iconSize/2, iconY + iconSize/2 - 2);
+        
+        // Timer text
+        context.font = '10px Courier New';
+        context.fillText(timeLeft.toFixed(1) + 's', iconX + iconSize/2, iconY + iconSize/2 + 10);
+        
+        context.restore();
+        
+        iconX += spacing;
+    }
+    
+    // Combined glow effect when both active
+    if (powerups.tripleShot.active && powerups.rapidFire.active) {
+        context.save();
+        context.globalAlpha = 0.3 * (Math.sin(now / 150) * 0.5 + 0.5);
+        context.fillStyle = 'rgb(255, 255, 100)';
+        context.font = 'bold 12px Courier New';
+        context.textAlign = 'left';
+        context.fillText('COMBO!', 10, 110);
+        context.restore();
+    }
 }

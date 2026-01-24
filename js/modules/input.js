@@ -18,8 +18,11 @@ let joystickActive = false;
 let joystickStartX = 0;
 let joystickStartY = 0;
 
-export function initInput(canvasElement) {
+let onPauseCallback = null;
+
+export function initInput(canvasElement, onPause) {
     canvas = canvasElement;
+    onPauseCallback = onPause;
     isMobile = detectMobile();
     
     if (isMobile) {
@@ -48,7 +51,11 @@ function setupDesktopControls() {
         if (key === 'a' || key === 'arrowleft') input.left = true;
         if (key === 'd' || key === 'arrowright') input.right = true;
         
-        if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+        if (key === 'escape' && onPauseCallback) {
+            onPauseCallback();
+        }
+
+        if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
             e.preventDefault();
         }
     });

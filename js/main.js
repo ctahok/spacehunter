@@ -6,17 +6,31 @@ import { initRenderer, clearCanvas, generateStars, renderStarfield, updateStarfi
 import { updatePlayer, updateAsteroids, updateBullets, updateParticles, 
          checkCollision, splitAsteroid, createParticles } from './modules/physics.js';
 import { initInput, isMobileDevice, getInput } from './modules/input.js';
-import { initAudio, playShootSound, playExplosionSound, playAsteroidHit, playSpacecraftImpact, playLevelUpSound, playVoice } from './modules/audio.js';
+import { initAudio, playShootSound, playExplosionSound, playAsteroidHit, playSpacecraftImpact, playLevelUpSound, playVoice, startEngineHum, stopEngineHum, updateEngineHum } from './modules/audio.js';
 
 // Initialize canvas
 const canvas = document.getElementById('gameCanvas');
 const ctx = initRenderer(canvas);
 
 // Initialize input
-const input = initInput(canvas);
+const input = initInput(canvas, togglePause);
 
 // Initialize audio
 initAudio();
+
+// Migration: Move legacy voidHunter data to spaceHunter
+(function migrateLegacyData() {
+    const legacyScores = localStorage.getItem('voidHunterHighScores');
+    if (legacyScores && !localStorage.getItem('spaceHunterHighScores')) {
+        localStorage.setItem('spaceHunterHighScores', legacyScores);
+        localStorage.removeItem('voidHunterHighScores');
+    }
+    const legacyMute = localStorage.getItem('voidHunterMuted');
+    if (legacyMute && !localStorage.getItem('spaceHunterMuted')) {
+        localStorage.setItem('spaceHunterMuted', legacyMute);
+        localStorage.removeItem('voidHunterMuted');
+    }
+})();
 
 // Create particle pool
 const particlePool = [];
@@ -123,6 +137,29 @@ function updateDifficultyUI(index) {
     difficultyDesc.textContent = settings.desc;
 }
 
+const pauseScreen = document.getElementById('pauseScreen');
+const resumeBtn = document.getElementById('resumeBtn');
+const quitBtn = document.getElementById('quitBtn');
+
+function togglePause() {
+    if (GameState.gameState === 'playing') {
+        GameState.gameState = 'paused';
+        pauseScreen.classList.remove('hidden');
+    } else if (GameState.gameState === 'paused') {
+        GameState.gameState = 'playing';
+        pauseScreen.classList.add('hidden');
+    }
+}
+
+resumeBtn.addEventListener('click', togglePause);
+
+quitBtn.addEventListener('click', () => {
+    pauseScreen.classList.add('hidden');
+    menuScreen.classList.remove('hidden');
+    GameState.gameState = 'menu';
+    stopEngineHum(); // Stop hum on quit
+});
+
 startBtn.addEventListener('click', () => {
     const index = difficultySlider.value;
     const settings = DIFFICULTY_SETTINGS[index];
@@ -149,6 +186,8 @@ startBtn.addEventListener('click', () => {
     GameState.nextHealthSpawn = Date.now() + 30000;
     GameState.gameState = 'playing';
     
+    startEngineHum(); // Start hum on mission start
+
     menuScreen.classList.add('hidden');
     spawnWave();
 });
@@ -161,13 +200,93 @@ function gameLoop(currentTime) {
     const deltaTime = Math.min(currentTime - lastTime, 33);
     lastTime = currentTime;
     
-    if (GameState.gameState !== 'playing') {
-        // Just render background in menu/gameover
+    if (GameState.gameState === 'menu') {
         clearCanvas(ctx, canvas.width, canvas.height);
         renderStarfield(ctx, GameState.stars, GameState.speedMultiplier);
         requestAnimationFrame(gameLoop);
         return;
     }
+    
+    if (GameState.gameState === 'paused') {
+        // Render current state without updating
+        renderFrame();
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+    
+    frameCount++;
+    
+    if (GameState.gameState === 'playing') {
+        // Update
+        updatePlayer(GameState.player, input, canvas.width, canvas.height);
+        
+        // Update engine hum based on speed
+        const speed = Math.sqrt(GameState.player.vx**2 + GameState.player.vy**2);
+        updateEngineHum(speed);
+
+        spawnThrustParticles(); 
+        updateAsteroids(GameState.asteroids, GameState.speedMultiplier, canvas.width, canvas.height);
+        updateBullets(GameState.bullets, canvas.width, canvas.height);
+        updateParticles(GameState.particles);
+        updateStarfield(GameState.stars, GameState.speedMultiplier, canvas.height);
+        updateWeapons();
+        updateShooting(currentTime);
+        checkCollisions();
+        checkLevelComplete();
+        updateScreenShake();
+        updateBonusMessage();
+        
+        // Draw
+        renderFrame();
+    }
+    
+    requestAnimationFrame(gameLoop);
+}
+
+function renderFrame() {
+    ctx.save();
+    
+    if (GameState.screenShake.active) {
+        ctx.translate(GameState.screenShake.offsetX, GameState.screenShake.offsetY);
+    }
+    
+    clearCanvas(ctx, canvas.width, canvas.height);
+    renderStarfield(ctx, GameState.stars, GameState.speedMultiplier);
+    
+    for (let asteroid of GameState.asteroids) {
+        renderAsteroid(ctx, asteroid);
+    }
+    
+    for (let bullet of GameState.bullets) {
+        renderBullet(ctx, bullet);
+    }
+    
+    for (let weapon of GameState.weapons) {
+        renderWeapon(ctx, weapon);
+    }
+    
+    for (let healthPickup of GameState.healthPickups) {
+        renderHealthPickup(ctx, healthPickup);
+    }
+    
+    renderPlayer(ctx, GameState.player);
+    
+    for (let particle of GameState.particles) {
+        if (particle.active) {
+            renderParticle(ctx, particle);
+        }
+    }
+    
+    ctx.restore();
+    
+    updateHUD(GameState);
+    renderPowerupIcons(ctx, GameState.player);
+    
+    if (GameState.bonusMessage.active) {
+        renderBonusMessage(ctx);
+    }
+}
+
     
     frameCount++;
     
@@ -737,35 +856,61 @@ function updateScreenShake() {
 function gameOver() {
     GameState.gameState = 'gameover';
     playVoice('gameOver');
-    saveHighScore();
-    showGameOverScreen();
+    stopEngineHum(); // Stop hum on game over
+    
+    // Check if high score
+    const highScores = JSON.parse(localStorage.getItem('spaceHunterHighScores') || '[]');
+    const isHighScore = GameState.score > 0 && (highScores.length < 5 || GameState.score > highScores[highScores.length - 1].score);
+    
+    showGameOverScreen(isHighScore);
 }
 
-function saveHighScore() {
+function saveHighScore(initials) {
     let highScores = JSON.parse(localStorage.getItem('spaceHunterHighScores') || '[]');
-    highScores.push({ score: GameState.score, date: new Date().toLocaleDateString() });
+    highScores.push({ initials: initials, score: GameState.score, date: new Date().toLocaleDateString() });
     highScores.sort((a, b) => b.score - a.score);
     highScores = highScores.slice(0, 5);
     localStorage.setItem('spaceHunterHighScores', JSON.stringify(highScores));
 }
 
-function showGameOverScreen() {
+function showGameOverScreen(isHighScore) {
     const gameOverScreen = document.getElementById('gameOverScreen');
     const finalScore = document.getElementById('finalScore');
-    const highScoresDiv = document.getElementById('highScores');
+    const initialsContainer = document.getElementById('initialsContainer');
     
     finalScore.textContent = GameState.score;
     
+    if (isHighScore) {
+        initialsContainer.classList.remove('hidden');
+        const input = document.getElementById('playerInitials');
+        input.value = '';
+        setTimeout(() => input.focus(), 100);
+    } else {
+        initialsContainer.classList.add('hidden');
+    }
+    
+    renderHighScores();
+    gameOverScreen.classList.remove('hidden');
+}
+
+function renderHighScores() {
+    const highScoresDiv = document.getElementById('highScores');
     const highScores = JSON.parse(localStorage.getItem('spaceHunterHighScores') || '[]');
     let html = '<h2>High Scores</h2><ol>';
     for (let entry of highScores) {
-        html += `<li>${entry.score} - ${entry.date}</li>`;
+        html += `<li><span style="color:hsl(200, 100%, 50%)">${entry.initials || 'ACE'}</span> - ${entry.score}</li>`;
     }
     html += '</ol>';
     highScoresDiv.innerHTML = html;
-    
-    gameOverScreen.classList.remove('hidden');
 }
+
+document.getElementById('saveScoreBtn').addEventListener('click', () => {
+    const input = document.getElementById('playerInitials');
+    const initials = input.value.toUpperCase() || 'ACE';
+    saveHighScore(initials);
+    document.getElementById('initialsContainer').classList.add('hidden');
+    renderHighScores();
+});
 
 function updateBonusMessage() {
     if (GameState.bonusMessage.active) {

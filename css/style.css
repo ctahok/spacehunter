@@ -53,6 +53,20 @@ body {
     border: 2px solid hsl(200, 100%, 50%);
     background: hsl(240, 30%, 8%);
     margin-top: 4px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.health-bar-container.critical {
+    border-color: hsl(0, 100%, 50%);
+    box-shadow: 0 0 15px hsla(0, 100%, 50%, 0.5);
+    animation: critical-pulse 0.6s infinite alternate;
+}
+
+@keyframes critical-pulse {
+    from { transform: scale(1.0); }
+    to { transform: scale(1.05); }
 }
 
 .health-bar {
@@ -317,6 +331,54 @@ body {
     margin-bottom: 20px;
 }
 
+.initials-container {
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px dashed hsl(200, 100%, 50%);
+    border-radius: 4px;
+    background: hsla(200, 100%, 50%, 0.1);
+}
+
+.initials-container.hidden {
+    display: none;
+}
+
+.new-high-score {
+    color: hsl(200, 100%, 50%);
+    font-weight: bold;
+    margin-bottom: 10px;
+    animation: flash 0.5s infinite alternate;
+}
+
+@keyframes flash {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+}
+
+.initials-input {
+    background: transparent;
+    border: 2px solid hsl(200, 100%, 50%);
+    color: hsl(200, 100%, 50%);
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    width: 80px;
+    text-align: center;
+    text-transform: uppercase;
+    outline: none;
+    margin-right: 10px;
+}
+
+.save-btn {
+    padding: 8px 20px;
+    background: hsl(200, 100%, 50%);
+    color: hsl(240, 30%, 8%);
+    border: none;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    cursor: pointer;
+}
+
 .high-scores {
     margin: 20px 0;
     font-size: 20px;
@@ -354,6 +416,79 @@ body {
     box-shadow: 0 0 20px hsl(200, 100%, 50%);
 }
 
+/* Pause Screen */
+.pause-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: hsla(240, 30%, 8%, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 250;
+    backdrop-filter: blur(4px);
+}
+
+.pause-screen.hidden {
+    display: none;
+}
+
+.pause-modal {
+    background: hsl(240, 30%, 8%);
+    border: 3px solid hsl(200, 100%, 50%);
+    box-shadow: 0 0 30px hsla(200, 100%, 50%, 0.5);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    min-width: 300px;
+}
+
+.pause-modal h1 {
+    font-size: 48px;
+    margin-bottom: 30px;
+    letter-spacing: 0.2em;
+    text-shadow: 0 0 20px hsl(200, 100%, 50%);
+}
+
+.pause-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pause-btn {
+    padding: 15px 30px;
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    background: transparent;
+    color: hsl(200, 100%, 50%);
+    border: 2px solid hsl(200, 100%, 50%);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pause-btn:hover {
+    background: hsl(200, 100%, 50%);
+    color: hsl(240, 30%, 8%);
+    box-shadow: 0 0 15px hsl(200, 100%, 50%);
+}
+
+.pause-btn.danger {
+    color: hsl(0, 100%, 50%);
+    border-color: hsl(0, 100%, 50%);
+}
+
+.pause-btn.danger:hover {
+    background: hsl(0, 100%, 50%);
+    color: hsl(0, 0%, 100%);
+    box-shadow: 0 0 15px hsl(0, 100%, 50%);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
     #hud {
@@ -386,5 +521,45 @@ body {
     .health-bar-container {
         width: 120px;
         height: 16px;
+    }
+}
+
+/* Landscape Mode Adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
+    #hud {
+        top: 5px;
+        left: 5px;
+        padding: 6px;
+        font-size: 12px;
+        border-width: 1px;
+    }
+    
+    .hud-item {
+        margin-bottom: 2px;
+    }
+    
+    .health-bar-container {
+        width: 100px;
+        height: 10px;
+        border-width: 1px;
+        margin-top: 2px;
+    }
+    
+    .joystick, .fire-btn {
+        opacity: 0.4;
+        transition: opacity 0.2s ease;
+    }
+    
+    .joystick:active, .fire-btn:active,
+    .joystick:focus, .fire-btn:focus {
+        opacity: 0.9;
+    }
+
+    .mute-btn {
+        top: 5px;
+        right: 5px;
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
     }
 }

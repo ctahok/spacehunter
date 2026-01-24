@@ -4,6 +4,9 @@ let audioContext;
 let isMuted = false;
 let audioInitialized = false;
 
+let engineOsc;
+let engineGain;
+
 export function initAudio() {
     // Load mute state from localStorage
     const savedMuteState = localStorage.getItem('spaceHunterMuted');
@@ -26,6 +29,7 @@ function initAudioContext() {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         audioInitialized = true;
         console.log('Audio Context initialized');
+        startEngineHum();
     }
 }
 
@@ -33,6 +37,55 @@ export function toggleMute() {
     isMuted = !isMuted;
     localStorage.setItem('spaceHunterMuted', isMuted);
     updateMuteButton();
+    
+    if (isMuted) {
+        stopEngineHum();
+    } else if (audioInitialized) {
+        startEngineHum();
+    }
+}
+
+export function startEngineHum() {
+    if (isMuted || !audioInitialized || engineOsc) return;
+    
+    engineOsc = audioContext.createOscillator();
+    engineGain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 60;
+    
+    filter.type = 'lowpass';
+    filter.frequency.value = 200;
+    
+    engineGain.gain.value = 0.05;
+    
+    engineOsc.connect(filter);
+    filter.connect(engineGain);
+    engineGain.connect(audioContext.destination);
+    
+    engineOsc.start();
+}
+
+export function updateEngineHum(speed) {
+    if (!engineOsc || isMuted) return;
+    
+    // speed is usually 0-5
+    const targetFreq = 60 + (speed * 12);
+    engineOsc.frequency.setTargetAtTime(targetFreq, audioContext.currentTime, 0.1);
+    
+    const targetGain = 0.02 + (speed * 0.01);
+    engineGain.gain.setTargetAtTime(targetGain, audioContext.currentTime, 0.1);
+}
+
+export function stopEngineHum() {
+    if (engineOsc) {
+        try {
+            engineOsc.stop();
+            engineOsc.disconnect();
+        } catch (e) {}
+        engineOsc = null;
+    }
 }
 
 function updateMuteButton() {

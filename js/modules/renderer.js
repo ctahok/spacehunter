@@ -268,12 +268,20 @@ export function renderHealthPickup(context, healthPickup) {
 
 export function updateHUD(gameState) {
     const healthBar = document.getElementById('healthBar');
+    const healthBarContainer = healthBar.parentElement;
     const scoreElement = document.getElementById('score');
     const levelElement = document.getElementById('level');
     
     const maxHealth = gameState.player.maxHealth || 25;
     const healthPercent = Math.max(0, Math.min(1, gameState.player.health / maxHealth));
     healthBar.style.width = (healthPercent * 100) + '%';
+    
+    // Pulse effect for critical health (below 20%)
+    if (healthPercent < 0.2 && healthPercent > 0) {
+        healthBarContainer.classList.add('critical');
+    } else {
+        healthBarContainer.classList.remove('critical');
+    }
     
     scoreElement.textContent = gameState.score;
     levelElement.textContent = gameState.level;
@@ -283,9 +291,12 @@ export function renderPowerupIcons(context, player) {
     const now = Date.now();
     const powerups = player.powerups;
     let iconX = 10; // Start position from left
-    const iconY = 60; // Below the HUD
-    const iconSize = 40;
-    const spacing = 50;
+    
+    // Adjust Y position for landscape mode
+    const isLandscape = context.canvas.height < 500;
+    const iconY = isLandscape ? 45 : 60; 
+    const iconSize = isLandscape ? 30 : 40;
+    const spacing = isLandscape ? 40 : 50;
     
     // Triple Shot Icon
     if (powerups.tripleShot.active) {
@@ -308,14 +319,14 @@ export function renderPowerupIcons(context, player) {
         
         // "X3" text
         context.fillStyle = 'rgb(0, 255, 100)';
-        context.font = 'bold 18px Courier New';
+        context.font = `bold ${isLandscape ? 14 : 18}px Courier New`;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText('X3', iconX + iconSize/2, iconY + iconSize/2 - 2);
+        context.fillText('X3', iconX + iconSize/2, iconY + iconSize/2 - (isLandscape ? 1 : 2));
         
         // Timer text
-        context.font = '10px Courier New';
-        context.fillText(timeLeft.toFixed(1) + 's', iconX + iconSize/2, iconY + iconSize/2 + 10);
+        context.font = `${isLandscape ? 8 : 10}px Courier New`;
+        context.fillText(timeLeft.toFixed(1) + 's', iconX + iconSize/2, iconY + iconSize/2 + (isLandscape ? 8 : 10));
         
         context.restore();
         
@@ -343,14 +354,14 @@ export function renderPowerupIcons(context, player) {
         
         // "X2" text
         context.fillStyle = 'rgb(255, 150, 0)';
-        context.font = 'bold 18px Courier New';
+        context.font = `bold ${isLandscape ? 14 : 18}px Courier New`;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText('X2', iconX + iconSize/2, iconY + iconSize/2 - 2);
+        context.fillText('X2', iconX + iconSize/2, iconY + iconSize/2 - (isLandscape ? 1 : 2));
         
         // Timer text
-        context.font = '10px Courier New';
-        context.fillText(timeLeft.toFixed(1) + 's', iconX + iconSize/2, iconY + iconSize/2 + 10);
+        context.font = `${isLandscape ? 8 : 10}px Courier New`;
+        context.fillText(timeLeft.toFixed(1) + 's', iconX + iconSize/2, iconY + iconSize/2 + (isLandscape ? 8 : 10));
         
         context.restore();
         
@@ -362,9 +373,9 @@ export function renderPowerupIcons(context, player) {
         context.save();
         context.globalAlpha = 0.3 * (Math.sin(now / 150) * 0.5 + 0.5);
         context.fillStyle = 'rgb(255, 255, 100)';
-        context.font = 'bold 12px Courier New';
+        context.font = `bold ${isLandscape ? 10 : 12}px Courier New`;
         context.textAlign = 'left';
-        context.fillText('COMBO!', 10, 110);
+        context.fillText('COMBO!', isLandscape ? 5 : 10, iconY + iconSize + (isLandscape ? 10 : 15));
         context.restore();
     }
 }

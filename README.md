@@ -166,11 +166,6 @@ MIT License - See LICENSE file for details
 - **Audio:** Web Audio API synthesized sounds
 - **Voice:** Browser's native Web Speech Synthesis
 
-## 🔗 Links
-
-- **Source Code:** https://github.com/[username]/spacehunter-static
-- **Live Demo:** https://[username].github.io/spacehunter-static
-- **RSDC Framework:** https://github.com/ctahok/RSDC--Recursive-Spec-Driven-Coding-
 
 ---
 

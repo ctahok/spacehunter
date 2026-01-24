@@ -137,7 +137,7 @@ function updateJoystick(touch, joystick, joystickKnob) {
     
     // Clamp to joystick radius
     const distance = Math.sqrt(offsetX ** 2 + offsetY ** 2);
-    const maxDistance = 35; // 60px outer radius - 25px knob radius
+    const maxDistance = 21; // Reduced from 35 (60% scale)
     
     if (distance > maxDistance) {
         offsetX = (offsetX / distance) * maxDistance;

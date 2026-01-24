@@ -35,10 +35,10 @@ const stars = [
 
 // Difficulty Settings
 const DIFFICULTY_SETTINGS = [
-    { label: 'EASY', health: 40, speed: 0.4, interval: 80, color: 'hsl(120, 100%, 50%)', desc: 'Relaxed space exploration with extra durability.' },
-    { label: 'NORMAL', health: 25, speed: 0.5, interval: 100, color: 'hsl(200, 100%, 50%)', desc: 'The intended Space Hunter experience.' },
-    { label: 'HARD', health: 15, speed: 0.6, interval: 120, color: 'hsl(40, 100%, 50%)', desc: 'Aggressive asteroids and fragile systems.' },
-    { label: 'EXPERT', health: 10, speed: 0.7, interval: 150, color: 'hsl(0, 100%, 50%)', desc: 'One mistake is usually your last.' }
+    { label: 'EASY', health: 40, speed: 0.4, interval: 80, color: 'hsl(120, 100%, 50%)', desc: 'Relaxed space exploration with extra durability.', healFactor: 0.8 },
+    { label: 'NORMAL', health: 25, speed: 0.5, interval: 100, color: 'hsl(200, 100%, 50%)', desc: 'The intended Space Hunter experience.', healFactor: 0.6 },
+    { label: 'HARD', health: 15, speed: 0.6, interval: 120, color: 'hsl(40, 100%, 50%)', desc: 'Aggressive asteroids and fragile systems.', healFactor: 0.4 },
+    { label: 'EXPERT', health: 10, speed: 0.7, interval: 150, color: 'hsl(0, 100%, 50%)', desc: 'One mistake is usually your last.', healFactor: 0.2 }
 ];
 
 // Game State
@@ -67,6 +67,7 @@ const GameState = {
     score: 0,
     level: 1,
     gameState: 'menu', // Start in menu
+    currentDifficultyIndex: 1, // Track selected difficulty
     speedMultiplier: 0.5,
     lastKillTime: 0,
     comboActive: false,
@@ -127,6 +128,7 @@ startBtn.addEventListener('click', () => {
     const settings = DIFFICULTY_SETTINGS[index];
     
     // Apply difficulty settings
+    GameState.currentDifficultyIndex = index;
     GameState.player.health = settings.health;
     GameState.player.maxHealth = settings.health;
     GameState.speedMultiplier = settings.speed;
@@ -525,20 +527,17 @@ function checkCollisions() {
         const healthPickup = GameState.healthPickups[i];
         
         if (checkCollision(GameState.player, healthPickup)) {
-            const MAX_HEALTH = 25;
+            const settings = DIFFICULTY_SETTINGS[GameState.currentDifficultyIndex];
+            const missingHealth = GameState.player.maxHealth - GameState.player.health;
             
-            // Interpretation A: Heal 60% of missing health
-            const missingHealth = MAX_HEALTH - GameState.player.health;
-            
-            if (missingHealth > 0.5) { // Only heal if significantly missing health
-                const healAmount = Math.max(1, Math.round(missingHealth * 0.6));
+            if (missingHealth > 0.1) {
+                // Heal a percentage of missing health based on difficulty
+                const healAmount = Math.max(1, Math.floor(missingHealth * settings.healFactor));
                 GameState.player.health += healAmount;
                 
-                // Ensure we never quite hit 100% if we were significantly damaged
-                // but if we are at 24.x, rounding might bring us to 25.
-                // The prompt says "don't fill health completely", so I'll cap at 24 if missing was > 1
-                if (missingHealth > 1 && GameState.player.health >= MAX_HEALTH) {
-                    GameState.player.health = MAX_HEALTH - 1;
+                // Never fill completely - stay at least 0.1 below max
+                if (GameState.player.health >= GameState.player.maxHealth) {
+                    GameState.player.health = GameState.player.maxHealth - 0.1;
                 }
                 
                 GameState.healthPickups.splice(i, 1);

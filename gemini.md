@@ -215,16 +215,17 @@ Powerups can now stack. Collecting both results in 6 bullets fired at double rat
 
 The game features a selectable difficulty level that scales player stats and asteroid behavior.
 
-| Level  | HP (Max) | Asteroid Speed | Fire Rate | Description |
-| :---   | :---     | :---           | :---      | :---        |
-| **Easy**   | 40       | 0.4x           | 80ms      | Relaxed exploration, high durability. |
-| **Normal** | 25       | 0.5x           | 100ms     | The intended experience. |
-| **Hard**   | 15       | 0.6x           | 120ms     | Aggressive asteroids, fragile ship. |
-| **Expert** | 10       | 0.7x           | 150ms     | One mistake is usually fatal. |
+| Level  | HP (Max) | Asteroid Speed | Fire Rate | Heal Factor | Description |
+| :---   | :---     | :---           | :---      | :---        | :---        |
+| **Easy**   | 40       | 0.4x           | 80ms      | 80%         | Relaxed exploration, high durability. |
+| **Normal** | 25       | 0.5x           | 100ms     | 60%         | The intended experience. |
+| **Hard**   | 15       | 0.6x           | 120ms     | 40%         | Aggressive asteroids, fragile ship. |
+| **Expert** | 10       | 0.7x           | 150ms     | 20%         | One mistake is usually fatal. |
 
 - **Persistence**: Selected difficulty is saved in `localStorage` under `spaceHunterDifficulty`.
 - **UI**: A slider on the main menu and after game over allows switching levels.
 - **HUD Scaling**: The health bar automatically adjusts its 100% width based on the selected difficulty's max HP.
+- **Healing Logic**: Restores a percentage of missing health based on difficulty. Minimum 1 HP. Never fills health completely (maxes at `maxHealth - 0.1`).
 
 ---
 

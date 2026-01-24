@@ -272,7 +272,7 @@ export function updateHUD(gameState) {
     const levelElement = document.getElementById('level');
     
     const maxHealth = gameState.player.maxHealth || 25;
-    const healthPercent = Math.max(0, gameState.player.health) / maxHealth;
+    const healthPercent = Math.max(0, Math.min(1, gameState.player.health / maxHealth));
     healthBar.style.width = (healthPercent * 100) + '%';
     
     scoreElement.textContent = gameState.score;

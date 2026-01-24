@@ -51,7 +51,7 @@ All colors use HSL values for dynamic theming. See `gemini.md` for the complete 
 3. Go to **Settings** → **Pages**
 4. Set source to **main** branch, **/ (root)**
 5. Save and wait ~1 minute
-6. Access your game at `https://<username>.github.io/void-hunter-redux/`
+6. Access your game at `https://<username>.github.io/spacehunter-static/`
 
 ### Local Development:
 ```bash
@@ -87,7 +87,7 @@ Open `http://localhost:8000` in your browser.
 ## 📁 Project Structure
 
 ```
-void-hunter-redux/
+spacehunter-static/
 ├── index.html              # Entry point
 ├── gemini.md              # Game state schema and formulas
 ├── README.md              # This file
@@ -168,8 +168,8 @@ MIT License - See LICENSE file for details
 
 ## 🔗 Links
 
-- **Source Code:** https://github.com/[username]/void-hunter-redux
-- **Live Demo:** https://[username].github.io/void-hunter-redux
+- **Source Code:** https://github.com/[username]/spacehunter-static
+- **Live Demo:** https://[username].github.io/spacehunter-static
 - **RSDC Framework:** https://github.com/ctahok/RSDC--Recursive-Spec-Driven-Coding-
 
 ---

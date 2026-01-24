@@ -15,9 +15,7 @@ let input = {
 
 let isMobile = false;
 let joystickActive = false;
-let joystickStartX = 0;
-let joystickStartY = 0;
-
+let joystickTouchId = null;
 let onPauseCallback = null;
 
 export function initInput(canvasElement, onPause) {
@@ -92,39 +90,66 @@ function setupMobileControls() {
     
     mobileControls.classList.remove('hidden');
     
-    // Virtual Joystick
+    // Virtual Joystick - Enhanced Multi-touch handling
     joystick.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        joystickActive = true;
-        updateJoystick(e.touches[0], joystick, joystickKnob);
+        // Look for the touch that just started on the joystick
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (!joystickActive) {
+                joystickActive = true;
+                joystickTouchId = touch.identifier;
+                updateJoystick(touch, joystick, joystickKnob);
+                break;
+            }
+        }
     });
     
     joystick.addEventListener('touchmove', (e) => {
         e.preventDefault();
         if (joystickActive) {
-            updateJoystick(e.touches[0], joystick, joystickKnob);
+            // Only update if the specific joystick finger moved
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    updateJoystick(e.changedTouches[i], joystick, joystickKnob);
+                    break;
+                }
+            }
         }
     });
     
-    joystick.addEventListener('touchend', () => {
-        joystickActive = false;
-        input.joystickX = 0;
-        input.joystickY = 0;
-        joystickKnob.style.transform = 'translate(-50%, -50%)';
-    });
+    const handleJoystickEnd = (e) => {
+        if (joystickActive) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    joystickActive = false;
+                    joystickTouchId = null;
+                    input.joystickX = 0;
+                    input.joystickY = 0;
+                    joystickKnob.style.transform = 'translate(-50%, -50%)';
+                    break;
+                }
+            }
+        }
+    };
+
+    joystick.addEventListener('touchend', handleJoystickEnd);
+    joystick.addEventListener('touchcancel', handleJoystickEnd);
     
-    // Fire Button
+    // Fire Button - Independent handling
     fireBtn.addEventListener('touchstart', (e) => {
         e.preventDefault();
         input.shooting = true;
         fireBtn.classList.add('pressed');
     });
     
-    fireBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
+    const handleFireEnd = (e) => {
         input.shooting = false;
         fireBtn.classList.remove('pressed');
-    });
+    };
+
+    fireBtn.addEventListener('touchend', handleFireEnd);
+    fireBtn.addEventListener('touchcancel', handleFireEnd);
 }
 
 function updateJoystick(touch, joystick, joystickKnob) {

@@ -294,9 +294,9 @@ export function renderPowerupIcons(context, player) {
     
     // Adjust Y position for landscape mode
     const isLandscape = context.canvas.height < 500;
-    const iconY = isLandscape ? 45 : 60; 
-    const iconSize = isLandscape ? 30 : 40;
-    const spacing = isLandscape ? 40 : 50;
+    const iconY = isLandscape ? 35 : 60; 
+    const iconSize = isLandscape ? 25 : 40;
+    const spacing = isLandscape ? 35 : 50;
     
     // Triple Shot Icon
     if (powerups.tripleShot.active) {

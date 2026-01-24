@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Space Hunter</title>
-    <link rel="stylesheet" href="./css/style.css?v=16">
+    <link rel="stylesheet" href="./css/style.css?v=19">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body>
@@ -21,6 +21,11 @@
         <div class="hud-item">LEVEL: <span id="level">1</span></div>
     </div>
 
+    <div class="top-right-controls">
+        <button id="fullscreenBtn" class="fullscreen-btn" aria-label="Toggle Fullscreen">⛶</button>
+        <button id="muteBtn" class="mute-btn" aria-label="Toggle sound">🔊</button>
+    </div>
+
     <div id="menuScreen" class="menu-screen">
         <div class="menu-modal">
             <h1>SPACE HUNTER</h1>
@@ -31,11 +36,6 @@
             </div>
             <button id="startBtn" class="start-btn">START MISSION</button>
         </div>
-    </div>
-    
-    <div class="top-right-controls">
-        <button id="fullscreenBtn" class="fullscreen-btn" aria-label="Toggle Fullscreen">⛶</button>
-        <button id="muteBtn" class="mute-btn" aria-label="Toggle sound">🔊</button>
     </div>
     
     <div id="mobileControls" class="mobile-controls hidden">
@@ -71,6 +71,6 @@
         </div>
     </div>
     
-    <script type="module" src="./js/main.js?v=16"></script>
+    <script type="module" src="./js/main.js?v=19"></script>
 </body>
 </html>
